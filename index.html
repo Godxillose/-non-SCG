@@ -1515,7 +1515,7 @@ function render() {
       truckCategories.forEach(truckType => {
         const carsOfType = filteredCarsForLogistics.filter(c => c.type === truckType);
         if(carsOfType.length > 0) {
-          carsHtml += `<tr style="background:#f1f5f9;"><td colspan="6" style="font-weight:bold; color:var(--blue);">🚛 ประเภทรถใน Fleet: ${truckType}</td></tr>`;
+          carsHtml += `<tr style="background:#f1f5f9;"><td colspan="6" style="font-weight:bold; color:var(--blue);">🚛 ประเภทรถ: ${truckType}</td></tr>`;
           
           carsOfType.forEach(c => {
             const assignedJobId = Object.keys(pendingMatches).find(k => pendingMatches[k] === c.id);
