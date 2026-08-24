@@ -1,0 +1,3144 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ระบบบริหารงานขนส่ง (Transportation Management)</title>
+<!-- Firebase & XLSX Libraries -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Chart.js for Dashboard Analytics -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{
+  --bg:#f1f4f9;
+  --card:#ffffff;
+  --line:#e2e8f0;
+  --text:#0f172a;
+  --muted:#5b6770;
+  --blue:#0050f0;
+  --blue-hover:#003ec1;
+  --orange:#f26522;
+  --green:#16a34a;
+  --red:#dc2626;
+  --purple:#7c3aed
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:var(--text);text-rendering:optimizeLegibility;-webkit-overflow-scrolling:touch}
+img{content-visibility:auto}
+.app{contain:layout style}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;border:0;border-radius:8px;padding:9px 14px;font-weight:600}
+.app{max-width:1400px;margin:auto;padding:18px;display:none;}
+
+/* Login Overlay */
+.login-screen{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  background: linear-gradient(rgba(0, 30, 84, 0.6), rgba(0, 80, 240, 0.6)), url('bg-login.png') no-repeat center center;
+  background-size: cover;
+  padding:20px;
+}
+.login-card{background:#ffffff;border-radius:16px;padding:32px;width:100%;max-width:400px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);text-align:center;}
+.login-card img{height:55px;margin-bottom:15px;object-fit:contain;}
+.login-card h2{margin:0 0 5px;font-size:20px;color:var(--text);}
+.login-card p{color:var(--muted);font-size:13px;margin-bottom:20px;}
+.login-field{text-align:left;margin-bottom:15px;}
+.login-field label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:#344054;}
+.login-field input[type="text"], .login-field input[type="password"]{width:100%;padding:10px;border:1px solid #cbd2dc;border-radius:8px;}
+.remember-me{display:flex;align-items:center;gap:8px;margin-bottom:15px;text-align:left;font-size:13px;color:#344054;cursor:pointer;}
+.remember-me input{width:auto;cursor:pointer;}
+.login-btn{width:100%;background:var(--blue);color:#fff;padding:12px;font-size:15px;margin-top:5px;transition:background 0.2s;}
+.login-btn:hover{background:var(--blue-hover);}
+.login-error{color:var(--red);font-size:13px;margin-top:12px;display:none;}
+
+/* Header Section */
+.header{background:#ffffff;color:var(--text);border-radius:14px;padding:16px 22px;display:flex;justify-content:space-between;align-items:center;gap:15px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid var(--line);border-top:4px solid var(--blue);position:sticky;top:0;z-index:60;flex-wrap:wrap;}
+.header-brand{display:flex;align-items:center;gap:18px}
+.logo{height:46px;width:auto;object-fit:contain}
+.header-title-box{display:flex;flex-direction:column}
+.header h1{margin:0;font-size:20px;color:var(--text);font-weight:700}
+.user-info{display:flex;align-items:center;gap:12px;}
+.logout-btn{background:#fee2e2;color:var(--red);padding:6px 12px;font-size:12px;}
+.logout-btn:hover{background:#fca5a5;}
+
+.page-toolbar{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:10px 16px;border-radius:10px;margin-bottom:15px;border:1px solid var(--line);box-shadow:0 1px 3px rgba(0,0,0,0.02);}
+.page-toolbar h3{margin:0;font-size:16px;color:var(--text);}
+.refresh-btn{background:#e0e7ff;color:var(--blue);padding:6px 14px;font-size:12px;display:inline-flex;align-items:center;gap:5px;transition:all 0.2s ease;}
+.refresh-btn:hover{background:#c7d2fe;}
+
+.spin-icon { display: inline-block; transition: transform 0.3s ease; }
+.spinning .spin-icon { animation: spinAnimation 0.8s linear infinite; }
+@keyframes spinAnimation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.filter-bar{background:#eef2ff;padding:10px 15px;border-radius:8px;margin-bottom:15px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:bold;border:1px solid #e0e7ff;color:#003ec1;}
+.filter-bar select, .filter-bar input[type="date"]{width:auto;min-width:160px;background:#fff;}
+.tabs{display:flex;gap:8px;margin:15px 0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:4px;}.tabs::-webkit-scrollbar{height:5px}.tabs::-webkit-scrollbar-thumb{background:#cbd2dc;border-radius:999px}.tab{background:#fff;color:#344054;border:1px solid var(--line);flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}.tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.page{display:none}.page.active{display:block}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,0.02)}.card h2,.card h3{margin:0 0 12px;color:var(--text)}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:4px;color:#344054}.field.full{grid-column:1/-1}input,select,textarea{width:100%;padding:9px;border:1px solid #cbd2dc;border-radius:7px;background:#fff}textarea{min-height:70px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.primary{background:var(--blue);color:#fff}.primary:hover{background:var(--blue-hover);}.success{background:var(--green);color:#fff}.warning{background:var(--orange);color:#fff}.danger{background:var(--red);color:#fff}.light{background:#eef2f7;color:#344054}
+.smallbtn{padding:4px 8px;font-size:11px;border-radius:5px;}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;border-top:3px solid var(--blue);transition:box-shadow .2s ease}.stat b{display:block;font-size:25px;color:var(--blue);transition:color .2s ease}.stat span{font-size:12px;color:var(--muted)}
+@keyframes statPulse{0%{transform:scale(1.22);color:var(--orange);}100%{transform:scale(1);}}
+.stat b.pulse{animation:statPulse .5s ease;}
+.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:9px 7px;text-align:left;white-space:nowrap}th{background:#f8fafc;font-size:12px;color:#475569}.badge{display:inline-block;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700}.wait{background:#fff4cc;color:#8a5b00}.matched{background:#dcfce7;color:#166534}.printed{background:#e0e7ff;color:#1d4ed8}.transit{background:#dbeafe;color:#1d4ed8}.completed{background:#f1f5f9;color:#475569}
+.row-actions{display:flex;gap:5px;flex-wrap:wrap}.status-note{font-size:11px;color:var(--muted);margin-top:4px}.hint{color:var(--muted);font-size:12px}.empty{text-align:center;color:var(--muted);padding:25px}
+.print-page{display:none}
+.dest-card{background:#f8fafc;border:1px solid #cbd2dc;border-radius:10px;padding:14px;margin-bottom:12px;}
+.dash-kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:15px;}
+.dash-kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;border-left:4px solid var(--blue);box-shadow:0 1px 3px rgba(0,0,0,0.02);}
+.dash-kpi.green{border-left-color:var(--green);}
+.dash-kpi.orange{border-left-color:var(--orange);}
+.dash-kpi.purple{border-left-color:var(--purple);}
+.dash-kpi b{display:block;font-size:22px;color:var(--text);margin-top:4px;}
+.dash-kpi span{font-size:12px;color:var(--muted);font-weight:600;}
+.progress-bar-bg{background:#e2e8f0;border-radius:999px;height:8px;width:100%;overflow:hidden;margin-top:8px;}
+.progress-bar-fill{background:var(--green);height:100%;width:0%;transition:width 0.3s ease;}
+.logistics-split-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: start; }
+@media(max-width: 1200px) { .logistics-split-container { grid-template-columns: 1fr; } }
+
+/* --- Logistics Matching: card-based drag & drop UI --- */
+.lg-panel{display:flex;flex-direction:column;}
+.lg-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.lg-panel-head h3{display:flex;align-items:center;gap:8px;margin:0;}
+.lg-count{background:#eef2f7;color:#334155;font-size:12px;font-weight:800;padding:2px 10px;border-radius:999px;}
+.lg-scroll{max-height:640px;overflow-y:auto;padding-right:4px;display:flex;flex-direction:column;gap:10px;scroll-behavior:auto;}
+.lg-scroll::-webkit-scrollbar{width:6px}
+.lg-scroll::-webkit-scrollbar-thumb{background:#cbd2dc;border-radius:99px}
+.lg-group-label{font-size:12px;font-weight:800;color:var(--blue);background:#eef4ff;border-radius:8px;padding:7px 11px;margin:2px 0;letter-spacing:.2px;}
+
+.car-card{border:1.5px solid var(--line);border-radius:14px;padding:13px 15px;background:#fff;transition:border-color .16s ease, background .16s ease, box-shadow .16s ease, transform .16s ease;}
+.car-card .cc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.car-card .cc-plate{font-size:15px;font-weight:800;color:var(--text);}
+.car-card .cc-meta{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5;}
+.car-card.has-pending{border-color:#fdba74;background:#fffaf3;}
+.car-card.drag-over{border-color:var(--blue);background:#eef6ff;box-shadow:0 0 0 5px rgba(0,80,240,.12);transform:translateY(-2px) scale(1.01);}
+.car-card.drop-disabled{border-color:var(--red);background:#fef2f2;box-shadow:0 0 0 5px rgba(220,38,38,.10);}
+.car-card.drop-disabled .cc-plate{color:var(--red);}
+
+.attached-chip{margin-top:11px;background:#fff;border:1.5px dashed var(--orange);border-radius:11px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:grab;animation:chipIn .22s ease;}
+.attached-chip:active{cursor:grabbing;}
+.attached-chip.dragging{opacity:.45;}
+.attached-chip .ac-info b{font-size:13px;color:#9a3412;}
+.attached-chip .ac-info small{color:var(--muted);display:block;font-size:11px;margin-top:2px;}
+.attached-chip button{padding:4px 10px;font-size:11px;border-radius:7px;background:#fee2e2;color:var(--red);font-weight:700;flex-shrink:0;}
+.attached-chip button:hover{background:#fecaca;}
+@keyframes chipIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+.job-card{border:1.5px solid var(--line);border-radius:14px;padding:13px 15px;background:#fff;cursor:grab;transition:border-color .16s ease, box-shadow .16s ease, transform .16s ease, opacity .16s ease;}
+.job-card:hover{border-color:#93c5fd;box-shadow:0 2px 8px rgba(0,80,240,.08);}
+.job-card:active{cursor:grabbing;}
+.job-card.dragging{opacity:.4;transform:scale(.97);}
+.job-card .jc-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.job-card .jc-id{font-weight:800;font-size:14px;display:flex;align-items:center;gap:6px;}
+.job-card .jc-grip{color:#cbd5e1;font-size:14px;letter-spacing:-2px;}
+.job-card .jc-meta{font-size:12.5px;color:var(--muted);margin:6px 0 9px;line-height:1.6;}
+.job-card select{font-size:12.5px;padding:6px 8px;}
+.lg-empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:13px;}
+
+/* อัปเกรด Drag & Drop */
+[draggable="true"] { cursor: grab; user-select: none; transition: none; }
+[draggable="true"]:active { cursor: grabbing; }
+.dragging { opacity: 0.7; transform: scale(0.96); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 2px dashed var(--blue) !important; background-color: #f0f7ff !important; z-index: 10; position: relative;}
+.drag-over { background-color: #dbeafe !important; border: 2px dashed var(--blue) !important; box-shadow: 0 0 12px rgba(0,80,240,0.2) inset; transform: scale(1.01); transition: all 0.2s ease; }
+.drop-disabled { background-color: #fee2e2 !important; border: 2px dashed var(--red) !important; opacity: 0.7; }
+
+.edit-mode{border:2px solid var(--orange) !important;background-color:#fffcf5 !important;}
+.multi-car-table input, .multi-car-table select{padding:6px;font-size:12px;}
+
+/* Modal Overlay & Base */
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);backdrop-filter: blur(2px);display:none;justify-content:center;align-items:center;z-index:9999;}
+.modal-overlay.active{display:flex; animation: fadeIn 0.2s ease;}
+.modal-content{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:500px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2); animation: slideUp 0.3s ease;}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Custom Alert & Confirm Modals */
+.sys-alert-content { text-align: center; max-width: 420px; padding: 38px 32px 30px; }
+.sys-alert-icon-circle { width: 86px; height: 86px; border-radius: 50%; border: 3px solid var(--blue); color: var(--blue); display: flex; align-items: center; justify-content: center; margin: 0 auto 22px; font-size: 40px; font-weight: 300; line-height: 1; background: #fff; transition: border-color .15s ease, color .15s ease; }
+.sys-alert-title { margin: 0 0 12px; color: var(--text); font-size: 22px; font-weight: 800; }
+.sys-alert-msg { margin: 0 0 26px; color: var(--muted); font-size: 15px; line-height: 1.6; white-space: pre-line; }
+.sys-alert-actions { display: flex; gap: 12px; justify-content: center; }
+.sys-alert-actions button { flex: 1 1 0; max-width: 150px; padding: 12px 18px; border-radius: 999px; font-size: 15px; font-weight: 700; transition: transform .12s ease, background .15s ease; }
+.sys-alert-actions button:hover { transform: translateY(-1px); }
+.sys-btn-confirm { background: var(--green); color: #fff; }
+.sys-btn-confirm:hover { background: #128a3e; }
+.sys-btn-cancel { background: #475569; color: #fff; }
+.sys-btn-cancel:hover { background: #334155; }
+.sys-btn-ok { background: var(--blue); color: #fff; }
+.sys-btn-ok:hover { background: var(--blue-hover); }
+
+.import-box{background:#f0f9ff; border:1px dashed var(--blue); border-radius:10px; padding:15px; margin-bottom:15px;}
+@media(max-width:1100px){.dash-kpi-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.grid,.stats{grid-template-columns:1fr 1fr}.dash-kpi-grid{grid-template-columns:1fr 1fr}}
+@media print{
+  @page { size: A4; margin: 10mm; }
+  body * { visibility: hidden !important; }
+  .print-page, .print-page * { visibility: visible !important; }
+  .print-page { position: absolute; left: 0; top: 0; width: 100%; display: block !important; padding: 0; font-family: Arial, "Tahoma", sans-serif; font-size: 15px; color: #000; background: #fff; }
+  .barcode{height:25px;width:130px;background:repeating-linear-gradient(90deg,#111 0 2px,#fff 2px 4px,#111 4px 5px,#fff 5px 7px)}
+  .ptable{width:100%;border-collapse:collapse;margin-top:6px;margin-bottom:8px;}
+  .ptable th,.ptable td{border:1px solid #666;padding:6px 8px;font-size:13.5px;text-align:left;}
+  .ptable th{background:#f0f0f0;font-weight:bold;}
+  .sign{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:35px;text-align:center;page-break-inside: avoid;}
+  .line{height:24px;border-bottom:1px solid #555}
+}
+
+/* ===== UX UPGRADE: Smooth System Modal & Fullscreen Loading ===== */
+.modal-overlay{background:rgba(15,23,42,.42);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);transition:opacity .18s ease,visibility .18s ease;will-change:opacity;}
+.modal-overlay.active{animation:modalFade .32s cubic-bezier(.2,.8,.2,1);}
+.modal-content{transform-origin:center;box-shadow:0 28px 70px rgba(15,23,42,.22);border:1px solid rgba(255,255,255,.72);}
+.sys-alert-content{position:relative;overflow:hidden;padding:40px 34px 32px;border-radius:24px;}
+.sys-alert-content:before{content:"";position:absolute;inset:0 0 auto;height:5px;background:linear-gradient(90deg,var(--blue),#38bdf8,var(--green));}
+.sys-alert-icon-circle{width:92px;height:92px;border-width:0;background:linear-gradient(145deg,#f8fbff,#eef6ff);box-shadow:0 14px 30px rgba(0,80,240,.12),inset 0 1px 0 rgba(255,255,255,.9);animation:iconPop .45s cubic-bezier(.2,1.5,.35,1) both;}
+.sys-alert-title{font-size:24px;letter-spacing:-.2px;}
+.sys-alert-msg{font-size:15px;line-height:1.7;}
+.sys-alert-actions button{border-radius:14px;min-height:48px;box-shadow:0 8px 16px rgba(15,23,42,.12);transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;}
+.sys-alert-actions button:hover{transform:translateY(-2px);box-shadow:0 12px 24px rgba(15,23,42,.18);filter:brightness(1.03);}
+.sys-alert-actions button:active{transform:translateY(0) scale(.98);box-shadow:0 4px 10px rgba(15,23,42,.14);}
+@keyframes modalFade{from{opacity:0}to{opacity:1}}
+@keyframes iconPop{0%{opacity:0;transform:scale(.65) rotate(-8deg)}70%{transform:scale(1.08) rotate(2deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+.sys-loader-overlay{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;background:rgba(241,245,249,.82);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease;}
+.sys-loader-overlay.active{opacity:1;visibility:visible;}
+.sys-loader-card{width:min(320px,calc(100vw - 40px));padding:30px 28px;border-radius:24px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.9);box-shadow:0 30px 80px rgba(15,23,42,.22);text-align:center;transform:translateY(10px) scale(.97);transition:transform .28s cubic-bezier(.2,.8,.2,1);}
+.sys-loader-overlay.active .sys-loader-card{transform:translateY(0) scale(1);}
+.loader-ring{width:66px;height:66px;margin:0 auto 18px;border-radius:50%;border:5px solid #dbeafe;border-top-color:var(--blue);border-right-color:#38bdf8;animation:loaderSpin .85s linear infinite;}
+.loader-title{font-weight:800;font-size:18px;color:var(--text);margin-bottom:6px;}
+.loader-sub{font-size:12px;color:var(--muted);}
+@keyframes loaderSpin{to{transform:rotate(360deg)}}
+
+/* Compact, professional matching cards */
+.logistics-split-container{gap:12px;}
+.lg-scroll{max-height:600px;gap:8px;}
+.car-card,.job-card{border-radius:12px;padding:10px 12px;}
+.car-card .cc-plate{font-size:14px}.car-card .cc-meta,.job-card .jc-meta{font-size:12px;line-height:1.45}
+.job-card .jc-meta{margin:5px 0 7px}.job-card .jc-id{font-size:13px}
+.lg-group-label{padding:6px 9px;margin:1px 0;font-size:11.5px}
+.car-card.drag-over{border-color:var(--green)!important;background:#f0fdf4!important;box-shadow:0 0 0 4px rgba(22,163,74,.12),0 10px 24px rgba(22,163,74,.08)!important;transform:translateY(-1px);}
+.car-card.drop-disabled{border-color:var(--red)!important;background:#fff8f8!important;box-shadow:0 0 0 4px rgba(220,38,38,.09)!important;opacity:1!important;}
+.car-card.drag-over:after,.car-card.drop-disabled:after{content:attr(data-drop-label);display:block;margin-top:8px;font-size:11px;font-weight:800;padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.8)}
+.car-card.drag-over:after{color:#15803d}.car-card.drop-disabled:after{color:#b91c1c}
+.attached-chip{padding:8px 10px;border-radius:10px;margin-top:8px;transition:transform .16s ease,box-shadow .16s ease;}
+.attached-chip:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(15,23,42,.08);}
+.job-return-zone{min-height:72px;border:1.5px dashed #cbd5e1;border-radius:12px;background:#f8fafc;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;font-weight:700;margin-bottom:8px;transition:all .18s ease;}
+.job-return-zone.drag-over{border-color:var(--orange)!important;background:#fff7ed!important;color:#c2410c;box-shadow:0 0 0 4px rgba(242,101,34,.08)!important;transform:none!important;}
+.dispatch-fleet-dashboard{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:10px;margin:12px 0 16px;}
+.dispatch-type-card{background:linear-gradient(145deg,#fff,#f8fbff);border:1px solid var(--line);border-radius:12px;padding:12px;transition:transform .18s ease,box-shadow .18s ease;}.status-history-cell{min-width:260px;}
+.status-current-row{display:flex;align-items:center;gap:6px;}
+.status-history-toggle{border:0;background:transparent;color:#64748b;padding:2px 5px;font-size:11px;line-height:1;border-radius:5px;cursor:pointer;transition:transform .15s ease,background .15s ease;}
+.status-history-toggle:hover{background:#eef2f7;color:var(--blue);}
+.status-history-toggle.open{transform:rotate(180deg);color:var(--blue);}
+.status-history-list{display:none;margin-top:5px;padding:6px 0 0 19px;border-top:1px dashed #e2e8f0;}
+.status-history-list.open{display:block;}
+.status-history-item{padding:2px 0;white-space:normal;}
+.dispatch-pie-wrap{width:100%;max-width:360px;height:260px;position:relative;margin:0 auto;}
+
+.dispatch-type-card:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(15,23,42,.08)}
+.dispatch-type-card b{display:block;font-size:16px}.dispatch-type-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.dispatch-type-meta span{font-size:11px;color:var(--muted);padding:6px 7px;background:#f8fafc;border-radius:8px}
+.type-count-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.type-count-chip{font-size:10.5px;background:#eef6ff;color:#1d4ed8;padding:4px 7px;border-radius:999px;font-weight:700}
+@media(max-width:1000px){.dispatch-fleet-dashboard{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.sys-alert-content{padding:32px 20px 24px}.sys-alert-actions{flex-direction:column}.sys-alert-actions button{max-width:none}.dispatch-fleet-dashboard{grid-template-columns:1fr}}
+
+</style>
+<style>
+.dispatch-status-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:10px}
+.dispatch-status-chart-card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:10px;min-width:0;contain:layout paint style}
+.dispatch-status-chart-title{font-weight:700;font-size:12px;color:#0f172a;margin-bottom:4px;text-align:center}
+.dispatch-status-chart-canvas{height:220px;position:relative}
+.page{contain:layout style}
+.lg-scroll,.table-wrap{overscroll-behavior:contain}
+@media(prefers-reduced-motion:no-preference){.car-card,.job-card,.dispatch-type-card{will-change:auto}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@media(max-width:700px){.dispatch-status-chart-grid{grid-template-columns:1fr 1fr}.dispatch-status-chart-canvas{height:205px}}
+
+/* Reduced motion override: keep UI responsive and minimize popup effects */
+.modal-overlay{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition:none!important;}
+.modal-overlay.active{animation:none!important;}
+.modal-content,.sys-alert-icon-circle,.sys-loader-card{animation:none!important;transition:none!important;transform:none!important;}
+.sys-alert-actions button,.refresh-btn,.login-btn,.car-card,.job-card,.attached-chip,.dispatch-type-card,.status-history-toggle,.stat b{transition:none!important;}
+.sys-alert-actions button:hover,.attached-chip:hover,.dispatch-type-card:hover,.status-history-toggle.open{transform:none!important;}
+@media(prefers-reduced-motion:no-preference){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}}
+</style>
+
+<style>
+/* Restore only the refresh/loading spinner animation */
+.loader-ring{animation:loaderSpin .85s linear infinite!important;}
+</style>
+<style>
+
+/* Mobile & Tablet: Logistics Matching only */
+@media (max-width: 1200px){
+  #logistics .logistics-split-container{
+    grid-template-columns:minmax(360px,1fr) minmax(360px,1fr);
+    gap:12px;
+    align-items:start;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:8px;
+  }
+  #logistics .logistics-split-container > *{min-width:0;}
+  #logistics .lg-scroll{max-height:calc(100vh - 240px); min-height:420px;}
+}
+
+@media (max-width: 700px){
+  #logistics .logistics-split-container{
+    grid-template-columns:minmax(300px,1fr) minmax(300px,1fr);
+    gap:10px;
+    margin-left:-2px;
+    margin-right:-2px;
+  }
+  #logistics .card{padding:12px;}
+  #logistics .lg-panel-head{position:sticky;top:0;z-index:4;background:#fff;padding:2px 0 8px;}
+  #logistics .lg-panel-head h3{font-size:14px;}
+  #logistics .lg-count{font-size:11px;}
+  #logistics .lg-scroll{max-height:calc(100vh - 215px); min-height:380px; gap:8px; padding-right:2px;}
+  #logistics .car-card,#logistics .job-card{padding:10px 11px;border-radius:12px;}
+  #logistics .car-card .cc-plate,#logistics .job-card .jc-id{font-size:13px;}
+  #logistics .car-card .cc-meta,#logistics .job-card .jc-meta{font-size:11px;}
+  #logistics .attached-chip{padding:8px 9px;font-size:11px;}
+  #logistics .page-toolbar{gap:8px;padding:9px 10px;}
+  #logistics .page-toolbar h3{font-size:14px;}
+}
+
+</style>
+</head>
+<body>
+
+<!-- Custom Alert Modal -->
+<div id="customAlertModal" class="modal-overlay">
+  <div class="modal-content sys-alert-content">
+    <div id="customAlertIcon" class="sys-alert-icon-circle">🔔</div>
+    <h3 id="customAlertTitle" class="sys-alert-title">แจ้งเตือนระบบ</h3>
+    <p id="customAlertMessage" class="sys-alert-msg"></p>
+    <div class="sys-alert-actions">
+      <button class="sys-btn-ok" style="max-width:200px;" onclick="closeCustomAlert()">ตกลง (OK)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Custom Confirm Modal -->
+<div id="customConfirmModal" class="modal-overlay">
+  <div class="modal-content sys-alert-content">
+    <div id="customConfirmIcon" class="sys-alert-icon-circle">?</div>
+    <h3 id="customConfirmTitle" class="sys-alert-title">ยืนยันการทำรายการ</h3>
+    <p id="customConfirmMessage" class="sys-alert-msg"></p>
+    <div class="sys-alert-actions">
+      <button class="sys-btn-confirm" id="customConfirmOkBtn" onclick="resolveCustomConfirm(true)">ยืนยัน</button>
+      <button class="sys-btn-cancel" id="customConfirmCancelBtn" onclick="resolveCustomConfirm(false)">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Fullscreen Refresh Loader -->
+<div id="systemLoader" class="sys-loader-overlay" aria-live="polite" aria-busy="true">
+  <div class="sys-loader-card">
+    <div class="loader-ring"></div>
+    <div class="loader-title">กำลังอัปเดตข้อมูล</div>
+    <div class="loader-sub">กรุณารอสักครู่ ระบบกำลังดึงข้อมูลล่าสุด...</div>
+  </div>
+</div>
+
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <img src="SCGJWD_Logo บริษัท.png" alt="SCGJWD Logistics Logo" onerror="this.style.display='none'">
+    <p>ระบบบริหารงานขนส่ง (Transportation Management)</p>
+    
+    <form onsubmit="handleLogin(event)">
+      <div class="login-field">
+        <label>ชื่อผู้ใช้งาน (Username)</label>
+        <input type="text" id="loginUser" required>
+      </div>
+      <div class="login-field">
+        <label>รหัสผ่าน (Password)</label>
+        <input type="password" id="loginPass" placeholder="รหัสผ่าน" required>
+      </div>
+      <label class="remember-me">
+        <input type="checkbox" id="rememberMe"> จดจำรหัสผ่าน (Remember Me)
+      </label>
+      <button type="submit" class="login-btn">🔐 เข้าสู่ระบบ</button>
+      <div id="loginError" class="login-error">❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+    </form>
+  </div>
+</div>
+
+<div id="app" class="app">
+  <div class="header">
+    <div class="header-brand">
+      <img src="SCGJWD_Logo บริษัท.png" alt="SCGJWD Logistics Logo" class="logo" onerror="this.style.display='none'">
+      <div class="header-title-box">
+        <h1>🚚 <b>ระบบบริหารงานขนส่ง (Transportation Management)</b></h1>
+      </div>
+    </div>
+    <div class="user-info">
+      <span id="userInfoLabel" style="font-size: 13px; font-weight: bold; color: var(--blue);"></span>
+      <div id="clock" style="font-size: 12px; color: var(--muted);"></div>
+      <button class="logout-btn" onclick="handleLogout()">🚪 ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-dashboard" onclick="showPage('dashboard',this)">📊 Daily Report Dashboard</button>
+    <button class="tab" id="tab-warehouse" onclick="showPage('warehouse',this)">🏭 คลังสินค้า</button>
+    <button class="tab" id="tab-logistics" onclick="showPage('logistics',this)">🚚 จัดรถโลจิสติกส์ (รอ Match)</button>
+    <button class="tab" id="tab-dispatch" onclick="showPage('dispatch',this)">📦 ปฏิบัติการจัดส่ง (เคลียร์งาน Match)</button>
+    <button class="tab" id="tab-cars" onclick="showPage('cars',this)">🚛 รถ / คนขับ</button>
+  </div>
+
+  <section id="dashboard" class="page active">
+    <div class="page-toolbar">
+      <h3>📊 Daily Report Dashboard & Analytics</h3>
+      <button class="refresh-btn" onclick="refreshData(this)" title="Reupdate ข้อมูล">
+        <span class="spin-icon">🔄</span> รีเฟรชข้อมูล
+      </button>
+    </div>
+
+    <div class="filter-bar">
+      <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+        <div>
+          <label for="globalFleetFilter">🔍 เลือก Fleet:</label>
+          <select id="globalFleetFilter" onchange="render()">
+            <option value="ALL">-- แสดงทุก Fleet --</option>
+            <option value="CHAIYASIT ชัยสิทธิ์ (non SCG)">CHAIYASIT ชัยสิทธิ์ (non SCG)</option>
+            <option value="STP สยามทบพัน (non SCG)">STP สยามทบพัน (non SCG)</option>
+          </select>
+        </div>
+        <div>
+          <label for="startDateFilter">📅 ตั้งแต่วันที่:</label>
+          <input type="date" id="startDateFilter" onchange="render()">
+        </div>
+        <div>
+          <label for="endDateFilter">📅 ถึงวันที่:</label>
+          <input type="date" id="endDateFilter" onchange="render()">
+        </div>
+      </div>
+      <button class="success" onclick="exportDailyReport()">📊 Export สถิติงาน (Excel)</button>
+    </div>
+
+    <div class="dash-kpi-grid">
+      <div class="dash-kpi">
+        <span>📦 งานขนส่งทั้งหมด</span>
+        <b id="dkTotal">0</b>
+      </div>
+      <div class="dash-kpi green">
+        <span>✅ จัดรถสำเร็จ (Matched)</span>
+        <b id="dkMatched">0</b>
+      </div>
+      <div class="dash-kpi orange">
+        <span>⏳ รอจัดรถ (Pending)</span>
+        <b id="dkWait">0</b>
+      </div>
+      <div class="dash-kpi purple">
+        <span>⚖️ น้ำหนักรวม (ตัน)</span>
+        <b id="dkWeight">0.000</b>
+      </div>
+      <div class="dash-kpi purple">
+        <span>🧱 Pallet รวม</span>
+        <b id="dkPallet">0</b>
+      </div>
+      <div class="dash-kpi green">
+        <span>🎯 Match Rate (%)</span>
+        <b id="dkRate">0%</b>
+        <div class="progress-bar-bg"><div id="dkRateBar" class="progress-bar-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- Analytics Charts Section -->
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+      <div class="card" style="display: flex; flex-direction: column; align-items: center;">
+        <h3 style="align-self: flex-start;">📈 อัตราส่วนสถานะงานขนส่ง (%Status)</h3>
+        <div style="width: 100%; max-width: 320px; height: 250px; position: relative;">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📊 ปริมาณงานแยกตามประเภทรถ (Jobs by Truck Type)</h3>
+        <div style="width: 100%; height: 250px; position: relative;">
+          <canvas id="truckChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch;">
+      <div class="card">
+        <h3>🏢 สรุปภาพรวมแยกตาม Fleet</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fleet</th>
+                <th>งานทั้งหมด</th>
+                <th>จัดรถสำเร็จ</th>
+                <th>รอจัดรถ</th>
+                <th>น้ำหนัก (ตัน)</th>
+                <th>อัตราความสำเร็จ</th>
+              </tr>
+            </thead>
+            <tbody id="dashFleetRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🚛 สรุปปริมาณงานแยกตามประเภทรถ</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ประเภทรถที่ต้องการ</th>
+                <th>จำนวนงาน</th>
+                <th>จัดรถสำเร็จแล้ว</th>
+                <th>น้ำหนักรวม (ตัน)</th>
+                <th>สัดส่วนงาน (%)</th>
+              </tr>
+            </thead>
+            <tbody id="dashTruckRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h3>📋 รายการงานขนส่งประจำช่วงเวลาที่เลือก (<span id="dashSelectedDateText">ทั้งหมด</span>)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>เลขงาน</th>
+              <th>วันที่ส่ง</th>
+              <th>Fleet</th>
+              <th>ลูกค้า</th>
+              <th>Ship to</th>
+              <th>ประเภทรถ</th>
+              <th>คนขับ/เบอร์โทร</th>
+              <th>สถานะ</th>
+            </tr>
+          </thead>
+          <tbody id="dashJobsRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="warehouse" class="page">
+    <div class="page-toolbar">
+      <h3>🏭 แผนกคลังสินค้า</h3>
+      <button class="refresh-btn" onclick="refreshData(this)" title="Reupdate ข้อมูล">
+        <span class="spin-icon">🔄</span> รีเฟรชข้อมูล
+      </button>
+    </div>
+
+    <div class="card" style="margin-bottom:14px; display:flex; flex-direction:column; align-items:center;">
+      <h3 style="align-self: flex-start; margin-bottom:2px;">📊 สัดส่วนเปรียบเทียบสถานะ: งานที่รอจัดรถ / งานที่จัดรถแล้ว</h3>
+      <div class="hint" style="align-self:flex-start; margin-bottom:8px;">อัปเดตตามตัวกรองของตาราง "งานที่คลังแจ้งเข้าระบบ" ด้านล่างโดยอัตโนมัติ</div>
+      <div style="width: 100%; max-width: 360px; height: 260px; position: relative;">
+        <canvas id="warehouseStatusPieChart"></canvas>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b id="sAll">0</b><span>งานทั้งหมด (ตามตัวกรอง)</span></div>
+      <div class="stat"><b id="sWait">0</b><span>รอจัดรถ</span></div>
+      <div class="stat"><b id="sMatch">0</b><span>จัดรถแล้ว</span></div>
+      <div class="stat"><b id="sPrint">0</b><span>พิมพ์ใบงานแล้ว</span></div>
+      <div class="stat"><b id="sTransit">0</b><span>อยู่ระหว่างขนส่ง</span></div>
+      <div class="stat"><b id="sCompleted">0</b><span>จัดส่งเสร็จสมบูรณ์แล้ว</span></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>📋 งานที่คลังแจ้งเข้าระบบ</h3>
+      
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap; background:#f8fafc; padding:10px 14px; border-radius:8px; border:1px solid var(--line);">
+        <div>
+          <label style="font-size:12px; font-weight:700; display:block; margin-bottom:3px; color:#344054;">📅 ตั้งแต่วันที่:</label>
+          <input type="date" id="whStartDate" onchange="render()" style="padding:6px; font-size:12px; width:auto; min-width:150px;">
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; display:block; margin-bottom:3px; color:#344054;">📅 ถึงวันที่:</label>
+          <input type="date" id="whEndDate" onchange="render()" style="padding:6px; font-size:12px; width:auto; min-width:150px;">
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; display:block; margin-bottom:3px; color:#344054;">🚚 Fleet:</label>
+          <select id="whFleetFilter" onchange="render()" style="padding:6px; font-size:12px; width:auto; min-width:160px;">
+            <option value="ALL">-- ทุก Fleet --</option>
+            <option value="CHAIYASIT ชัยสิทธิ์ (non SCG)">CHAIYASIT ชัยสิทธิ์ (non SCG)</option>
+            <option value="STP สยามทบพัน (non SCG)">STP สยามทบพัน (non SCG)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:700; display:block; margin-bottom:3px; color:#344054;">📌 สถานะ:</label>
+          <select id="whStatusFilter" onchange="render()" style="padding:6px; font-size:12px; width:auto; min-width:150px;">
+            <option value="ALL">-- ทุกสถานะ --</option>
+            <option value="รอจัดรถ">รอจัดรถ</option>
+            <option value="จัดรถแล้ว">จัดรถแล้ว</option>
+            <option value="พิมพ์ใบงานแล้ว">พิมพ์ใบงานแล้ว</option>
+            <option value="อยู่ระหว่างขนส่ง">อยู่ระหว่างขนส่ง</option>
+            <option value="จัดส่งเสร็จสมบูรณ์">จัดส่งเสร็จสมบูรณ์</option>
+          </select>
+        </div>
+        <div style="align-self:flex-end; display:flex; gap:6px;">
+          <button type="button" class="light smallbtn" onclick="clearWarehouseFilters()">ล้างตัวกรอง</button>
+          <button type="button" class="success smallbtn" onclick="exportWarehouseExcel()">📊 Export Excel</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>เลขงาน</th>
+              <th>Fleet</th>
+              <th>วันที่ส่ง</th>
+              <th>ลูกค้า</th>
+              <th>รหัสลูกค้า</th>
+              <th>รถที่ขอ</th>
+              <th>น้ำหนักรวม (ตัน)</th>
+              <th>Pallet รวม</th>
+              <th>ประวัติสถานะ / เวลา / ผู้ใช้งาน</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="warehouseRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="jobFormCard">
+      <h2 id="formTitle">🏭 แจ้งงานขนส่ง</h2>
+      <div class="grid">
+        <div class="field"><label>เลขงาน</label><input id="jobNo" readonly class="light" placeholder="ระบบสร้างให้อัตโนมัติ"></div>
+        <div class="field"><label>วันที่ส่ง</label><input id="dueDate" type="date"></div>
+        <div class="field">
+          <label>Fleet *</label>
+          <select id="fleet" onchange="onFleetChange(this.value)">
+            <option value="">-- เลือก Fleet --</option>
+            <option value="CHAIYASIT ชัยสิทธิ์ (non SCG)">CHAIYASIT ชัยสิทธิ์ (non SCG)</option>
+            <option value="STP สยามทบพัน (non SCG)">STP สยามทบพัน (non SCG)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>ประเภทรถที่ต้องการ *</label>
+          <select id="requiredTruck">
+            <option value="">-- เลือกประเภทรถ --</option>
+            <option value="4W">4W</option>
+            <option value="4W Jumbo">4W Jumbo</option>
+            <option value="6W">6W</option>
+            <option value="6W พ่วง">6W พ่วง</option>
+            <option value="10W">10W</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>ประเภทงาน *</label>
+          <select id="jobType">
+            <option value="">-- เลือกประเภทงาน --</option>
+            <option value="งานส่ง">งานส่ง</option>
+            <option value="งานค้าง">งานค้าง</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="destinationsContainer" style="margin-top:15px;"></div>
+      <button type="button" class="light" onclick="addDestinationBlock()" style="margin-top:5px;">➕ เพิ่มลูกค้าปลายทาง</button>
+
+      <div class="actions" style="margin-top:20px;">
+        <button class="primary" id="submitBtn" onclick="addJob()">+ ส่งงานให้โลจิสติกส์</button>
+        <button class="warning" id="updateBtn" onclick="updateJob()" style="display:none;">💾 บันทึกการแก้ไข</button>
+        <button class="light" id="cancelEditBtn" onclick="cancelEdit()" style="display:none;">ยกเลิกการแก้ไข</button>
+        <button class="light" id="resetBtn" onclick="resetJobForm()">ล้างฟอร์ม</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="logistics" class="page">
+    <div class="page-toolbar">
+      <h3>🚚 จัดรถโดย SCGJWD Logistics</h3>
+      <button class="refresh-btn" onclick="refreshData(this)" title="Reupdate ข้อมูล">
+        <span class="spin-icon">🔄</span> รีเฟรชข้อมูล
+      </button>
+    </div>
+
+    <div class="filter-bar">
+      <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+        <div>
+          <label for="logisticsFleetFilter">🔍 เลือก Fleet:</label>
+          <select id="logisticsFleetFilter" onchange="render()">
+            <option value="ALL">-- แสดงทุก Fleet --</option>
+            <option value="CHAIYASIT ชัยสิทธิ์ (non SCG)">CHAIYASIT ชัยสิทธิ์ (non SCG)</option>
+            <option value="STP สยามทบพัน (non SCG)">STP สยามทบพัน (non SCG)</option>
+          </select>
+        </div>
+      </div>
+      <div class="hint">⚡ ลากงานจากตารางรายการงานมารับรองกับแถวรถที่ตรงกัน หรือเลือกจับคู่ผ่านเมนูเพื่อจัดสรรได้ทันที</div>
+    </div>
+
+    <div id="pendingActionsBar" class="card" style="display:none; background:#e0e7ff; border:2px dashed var(--blue); margin-bottom:15px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <b style="color:var(--blue); font-size:15px;">📌 มีการจับคู่ค้างอยู่ <span id="pendingCount">0</span> รายการ</b>
+          <div style="font-size:12px; color:var(--muted);">กรุณากดยืนยันเพื่อบันทึกข้อมูลเข้าสู่ระบบพร้อมกัน</div>
+        </div>
+        <div class="actions" style="margin:0;">
+          <button class="success" onclick="confirmAllMatches()">✅ บันทึกการจับคู่ทั้งหมด (OK)</button>
+          <button class="danger" onclick="clearPendingMatches()">❌ ยกเลิกทั้งหมด</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="logistics-split-container">
+      <div class="card lg-panel" style="margin-bottom:0;">
+        <div class="lg-panel-head">
+          <h3>🚛 1. รถที่พร้อมใช้งาน <span class="lg-count" id="carsCount">0</span></h3><div class="type-count-row" id="logisticsTypeCounts"></div>
+        </div>
+        <div class="hint" style="margin-bottom:10px;">ลากการ์ดงานจากฝั่งขวามาวางบนรถคันที่ต้องการเพื่อจับคู่ทันที</div>
+        <div class="lg-scroll" id="availableCars"></div>
+      </div>
+
+      <div class="card lg-panel" style="margin-bottom:0;">
+        <div class="lg-panel-head">
+          <h3>📦 2. รายการงานรอจัดรถ <span class="lg-count" id="jobsCount">0</span></h3>
+        </div>
+        <div class="hint" style="margin-bottom:10px;">แตะค้างแล้วลากการ์ดงานไปวางบนรถ หรือเลือกจับคู่ผ่าน Dropdown</div>
+        <div class="lg-scroll" id="logisticsRows"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="dispatch" class="page">
+    <div class="page-toolbar">
+      <h3>📦 หน้าปฏิบัติการจัดส่ง (เคลียร์งาน Match & คืนสถานะรถ)</h3>
+      <button class="refresh-btn" onclick="refreshData(this)" title="Reupdate ข้อมูล">
+        <span class="spin-icon">🔄</span> รีเฟรชข้อมูล
+      </button>
+    </div>
+
+    <div class="filter-bar" style="margin-bottom:14px;">
+      <div>
+        <label for="dispatchFleetFilter">🔍 เลือก Fleet:</label>
+        <select id="dispatchFleetFilter" onchange="render()">
+          <option value="ALL">-- แสดงทุก Fleet --</option>
+          <option value="CHAIYASIT ชัยสิทธิ์ (non SCG)">CHAIYASIT ชัยสิทธิ์ (non SCG)</option>
+          <option value="STP สยามทบพัน (non SCG)">STP สยามทบพัน (non SCG)</option>
+        </select>
+      </div>
+      <div class="hint">สรุปจำนวนรถ / จำนวนงาน / สถานะรถ อ้างอิงจากข้อมูลสถานะรถในระบบ</div>
+    </div>
+    <div class="card">
+      <h2>📊 Dashboard รถตามประเภทรถ</h2>
+      <div id="dispatchFleetDashboard" class="dispatch-fleet-dashboard"></div>
+      <div style="margin-top:8px; padding-top:12px; border-top:1px solid var(--line);">
+        <h3 style="margin-bottom:8px;">เปรียบเทียบสถานะงาน: งานรอจัดรถ กับ งานที่จัดรถแล้ว</h3>
+        <div class="hint" style="margin-bottom:6px;">เปรียบเทียบ <b>งานรอจัดรถ</b> กับ <b>งานที่จัดรถแล้ว</b> แยกตามประเภทรถ</div>
+        <div id="dispatchFleetStatusCharts" class="dispatch-status-chart-grid"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🚚 กำลังจัดส่ง</h2>
+      <div class="hint">📋 งานที่ได้รับการจัดรถแล้วและอยู่ระหว่างการปฏิบัติการจัดส่ง พร้อมแสดงรายละเอียดงานที่ได้รับ</div>
+      <div id="dispatchBulkToolbar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:12px;cursor:pointer;"><input type="checkbox" id="dispatchSelectAll" onchange="toggleAllDispatchJobs(this.checked)"> เลือกทั้งหมด</label>
+        <button type="button" class="warning smallbtn" onclick="bulkStartTransit()">🚚 เปลี่ยนเป็นอยู่ระหว่างขนส่ง</button>
+        <button type="button" class="success smallbtn" onclick="bulkCompleteJobs()">✅ จัดส่งเสร็จสมบูรณ์</button>
+        <span id="dispatchSelectedCount" class="hint">ยังไม่ได้เลือกงาน</span>
+      </div>
+      <div class="table-wrap" style="margin-top:10px">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:54px;">เลือก</th>
+              <th>เลขงาน</th><th>วันที่ส่ง</th><th>ประเภทงาน</th><th>ลูกค้า</th><th>ทะเบียนรถ</th><th>คนขับ</th><th>รายการงานที่ได้รับ</th><th>สถานะ</th><th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="activeMatchedRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <h3>✅ ประวัติงานที่จัดส่งเสร็จสมบูรณ์แล้ว (Completed Jobs)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>เลขงาน</th>
+              <th>วันที่ส่ง</th>
+              <th>Fleet</th>
+              <th>ลูกค้า</th>
+              <th>รถที่ใช้ส่ง</th>
+              <th>คนขับ</th>
+              <th>สถานะ</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="completedJobsRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="cars" class="page">
+    <div class="page-toolbar">
+      <h3>🚛 จัดการ รถ / คนขับ</h3>
+      <button class="refresh-btn" onclick="refreshData(this)" title="Reupdate ข้อมูล">
+        <span class="spin-icon">🔄</span> รีเฟรชข้อมูล
+      </button>
+    </div>
+
+    <div class="card">
+      <h2>📥 นำเข้าข้อมูล รถ / คนขับ หลายรายการด้วยไฟล์ Excel</h2>
+      <div class="import-box">
+        <div class="grid" style="grid-template-columns: 1fr 2fr; gap:15px; align-items: end;">
+          <div class="field">
+            <label>1. เลือก Fleet ที่จะเพิ่มรถ *</label>
+            <select id="excelImportFleet">
+              <option value="CHAIYASIT ชัยสิทธิ์ (non SCG)">CHAIYASIT ชัยสิทธิ์ (non SCG)</option>
+              <option value="STP สยามทบพัน (non SCG)">STP สยามทบพัน (non SCG)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>2. เลือกไฟล์ Excel (.xlsx, .xls, .csv)</label>
+            <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv">
+          </div>
+        </div>
+        <div class="actions" style="margin-top: 15px;">
+          <button class="primary" onclick="importCarsFromExcel()">🚀 อัปโหลดนำเข้าข้อมูลทันที</button>
+          <button class="light" onclick="downloadCarTemplate()">📥 ดาวน์โหลดไฟล์ตัวอย่าง Template (.xlsx)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🚛 คีย์เพิ่มรายการ รถ / คนขับ (ป้อนข้อมูลทีละแถว)</h2>
+      <div class="field" style="max-width:400px; margin-bottom:15px;">
+         <label>ระบุ Fleet สำหรับรถกลุ่มนี้ *</label>
+         <select id="bulkFleet">
+            <option value="CHAIYASIT ชัยสิทธิ์ (non SCG)">CHAIYASIT ชัยสิทธิ์ (non SCG)</option>
+            <option value="STP สยามทบพัน (non SCG)">STP สยามทบพัน (non SCG)</option>
+         </select>
+      </div>
+
+      <div class="table-wrap multi-car-table">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 40px;">#</th>
+              <th>ทะเบียนรถ *</th>
+              <th>ประเภทรถ *</th>
+              <th>พนักงานขับรถ</th>
+              <th>เบอร์โทรศัพท์</th>
+              <th style="width: 60px;">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="multiCarRows"></tbody>
+        </table>
+      </div>
+
+      <div class="actions" style="margin-top:15px;">
+        <button class="light" onclick="addMultiCarRow()">➕ เพิ่มแถว</button>
+        <button class="success" onclick="saveMultipleCars()">💾 บันทึกเพิ่มรถทั้งหมด</button>
+      </div>
+    </div>
+    
+    <div class="filter-bar" style="margin-bottom:14px;">
+      <div>
+        <label for="carsFleetFilter">🔍 เลือก Fleet:</label>
+        <select id="carsFleetFilter" onchange="render()">
+          <option value="ALL">-- แสดงทุก Fleet --</option>
+          <option value="CHAIYASIT ชัยสิทธิ์ (non SCG)">CHAIYASIT ชัยสิทธิ์ (non SCG)</option>
+          <option value="STP สยามทบพัน (non SCG)">STP สยามทบพัน (non SCG)</option>
+        </select>
+      </div>
+      <div class="hint">แสดงสถานะรถตาม Fleet ที่เลือก</div>
+    </div>
+    <div class="card">
+      <h3>สถานะรถในระบบ</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fleet</th>
+              <th>ทะเบียน</th>
+              <th>ประเภท</th>
+              <th>คนขับ</th>
+              <th>โทร</th>
+              <th>สถานะ</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="carsRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Modal แก้ไขข้อมูลรถ -->
+<div class="modal-overlay" id="editCarModal">
+  <div class="modal-content">
+    <h3>📝 แก้ไขข้อมูลรถ / คนขับ</h3>
+    <input type="hidden" id="editCarId">
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div class="field">
+        <label>Fleet</label>
+        <select id="editCarFleet">
+          <option value="CHAIYASIT ชัยสิทธิ์ (non SCG)">CHAIYASIT ชัยสิทธิ์ (non SCG)</option>
+          <option value="STP สยามทบพัน (non SCG)">STP สยามทบพัน (non SCG)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>ทะเบียนรถ</label>
+        <input id="editCarPlate" type="text">
+      </div>
+      <div class="field">
+        <label>ประเภทรถ</label>
+        <select id="editCarType">
+          <option value="4W">4W</option>
+          <option value="4W Jumbo">4W Jumbo</option>
+          <option value="6W">6W</option>
+          <option value="6W พ่วง">6W พ่วง</option>
+          <option value="10W">10W</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>พนักงานขับรถ</label>
+        <input id="editCarDriver" type="text">
+      </div>
+      <div class="field">
+        <label>เบอร์โทรศัพท์</label>
+        <input id="editCarPhone" type="text">
+      </div>
+    </div>
+    <div class="actions" style="margin-top:15px; justify-content:flex-end;">
+      <button class="light" onclick="closeCarModal()">ยกเลิก</button>
+      <button class="warning" onclick="updateCar()">💾 บันทึกแก้ไข</button>
+    </div>
+  </div>
+</div>
+
+<div class="print-page" id="printPage">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px;">
+    <div>
+      <div style="font-size:28px; font-weight:bold; color: #000; margin-bottom: 4px;">ใบกำกับการขึ้นสินค้า</div>
+      <div style="font-size: 15px; color: #333;">ระบบบริหารงานขนส่ง (Transportation Management)</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="barcode" style="margin-left:auto; margin-bottom: 4px;"></div>
+      <div id="pBarcodeNo" style="font-weight:bold; letter-spacing: 1.5px; font-size:16px;"></div>
+      <table style="font-size:14px; margin-left:auto; text-align:left; border:none; margin-top:4px;">
+        <tr><td style="border:none; padding:1px 4px;"><b>เลขที่ใบงาน:</b></td><td style="border:none; padding:1px 4px;" id="pDoc"></td></tr>
+        <tr><td style="border:none; padding:1px 4px;"><b>ทะเบียนรถ:</b></td><td style="border:none; padding:1px 4px; font-weight:bold;" id="pPlateLMS"></td></tr>
+        <tr><td style="border:none; padding:1px 4px;"><b>น้ำหนัก Shipment:</b></td><td style="border:none; padding:1px 4px;" id="pTotalWeight"></td></tr>
+        <tr><td style="border:none; padding:1px 4px;"><b>สร้างใบงาน:</b></td><td style="border:none; padding:1px 4px;" id="pCreateDate"></td></tr>
+        <tr><td style="border:none; padding:1px 4px;"><b>พิมพ์เอกสาร:</b></td><td style="border:none; padding:1px 4px;" id="pPrintDate"></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div style="background: #f9f9f9; border: 1px solid #ccc; border-radius: 4px; padding: 10px 14px; margin-bottom: 12px; font-size: 15px; line-height: 1.5;">
+    <div style="margin-bottom: 4px;"><b>ประเภทรถที่ขึ้นจริง:</b> <span id="pTruckDoc" style="font-weight:bold; color:#0050f0; font-size:16px;"></span></div>
+    <div style="display:flex; gap:25px; flex-wrap: wrap;">
+      <div><b>วันที่ส่ง:</b> <span id="pDueDatePrint" style="font-weight:bold;"></span></div>
+      <div><b>ประเภทงาน:</b> <span id="pJobType" style="font-weight:bold;"></span></div>
+      <div><b>ประเภทรถที่ขอ:</b> <span id="pTruckReq"></span></div>
+      <div><b>ทะเบียนรถ:</b> <span id="pPlate"></span></div>
+      <div><b>พนักงานขับรถ:</b> <span id="pDriver"></span></div>
+    </div>
+  </div>
+
+  <div id="pDestinationsList" style="margin-top:5px;"></div>
+
+  <div class="sign" style="margin-top:35px; font-size: 14px;">
+    <div><div class="line"></div>พนักงานคลังสินค้า</div>
+    <div><div class="line"></div>พนักงานขับรถ</div>
+    <div><div class="line"></div>พนักงานโลจิสติกส์</div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBdVGiK0IuLjHgxdENgcdu86kWMjW_ngHY",
+  authDomain: "scgjwd-logistics.firebaseapp.com",
+  projectId: "scgjwd-logistics",
+  storageBucket: "scgjwd-logistics.firebasestorage.app",
+  messagingSenderId: "514224072294",
+  appId: "1:514224072294:web:9748a61b71a45432b56fa7",
+  measurementId: "G-HM6WZV34HD"
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const firestoreDb = firebase.firestore();
+
+firestoreDb.enablePersistence().catch(err => {
+    if (err.code === 'failed-precondition') {
+        console.warn('Multiple tabs open, persistence disabled');
+    } else if (err.code === 'unimplemented') {
+        console.warn('Browser does not support persistence');
+    }
+});
+
+let db = { jobs: [], cars: [] };
+let pendingMatches = {}; 
+let statusChartInstance = null;
+let truckChartInstance = null;
+let warehousePieChartInstance = null;
+
+// --- ระบบ Custom Alerts / Confirms ---
+const SYS_ALERT_ICONS = {
+  info:    { glyph: '🔔', color: 'var(--blue)'   },
+  success: { glyph: '✓',  color: 'var(--green)'  },
+  warning: { glyph: '!',  color: 'var(--orange)' },
+  danger:  { glyph: '!',  color: 'var(--red)'    }
+};
+
+function customAlert(message, type = 'info') {
+  const cfg = SYS_ALERT_ICONS[type] || SYS_ALERT_ICONS.info;
+  const icon = document.getElementById('customAlertIcon');
+  icon.textContent = cfg.glyph;
+  icon.style.borderColor = cfg.color;
+  icon.style.color = cfg.color;
+  document.getElementById('customAlertMessage').textContent = message;
+  document.getElementById('customAlertModal').classList.add('active');
+}
+
+function closeCustomAlert() {
+  document.getElementById('customAlertModal').classList.remove('active');
+}
+
+let confirmResolver;
+function customConfirm(message, opts = {}) {
+  const {
+    title = 'ยืนยันการทำรายการ',
+    confirmText = 'ยืนยัน',
+    cancelText = 'ยกเลิก',
+    type = 'question'
+  } = (typeof opts === 'string') ? { title: opts } : opts; // เผื่อกรณีเรียกแบบ (message, "หัวข้อ")
+
+  const iconCfg = type === 'question' ? { glyph: '?', color: 'var(--blue)' } : (SYS_ALERT_ICONS[type] || { glyph: '?', color: 'var(--blue)' });
+  const icon = document.getElementById('customConfirmIcon');
+  icon.textContent = iconCfg.glyph;
+  icon.style.borderColor = iconCfg.color;
+  icon.style.color = iconCfg.color;
+
+  document.getElementById('customConfirmTitle').textContent = title;
+  document.getElementById('customConfirmMessage').textContent = message;
+  document.getElementById('customConfirmOkBtn').textContent = confirmText;
+  document.getElementById('customConfirmCancelBtn').textContent = cancelText;
+  document.getElementById('customConfirmModal').classList.add('active');
+
+  return new Promise(resolve => {
+    confirmResolver = resolve;
+  });
+}
+
+function resolveCustomConfirm(result) {
+  document.getElementById('customConfirmModal').classList.remove('active');
+  if (confirmResolver) confirmResolver(result);
+}
+
+// --- ระบบตรวจสอบ Inactivity ---
+let idleTime = 0;
+const IDLE_LIMIT_MINUTES = 15;
+
+function setupInactivityTimer() {
+  const resetIdleTimer = () => {
+    idleTime = 0;
+  };
+
+  window.addEventListener('mousemove', resetIdleTimer);
+  window.addEventListener('keypress', resetIdleTimer);
+  window.addEventListener('click', resetIdleTimer);
+  window.addEventListener('scroll', resetIdleTimer);
+  window.addEventListener('touchstart', resetIdleTimer);
+
+  setInterval(() => {
+    const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+    if (currentUser) {
+      idleTime++;
+      if (idleTime >= IDLE_LIMIT_MINUTES) {
+        customAlert("หมดเวลาการเชื่อมต่อ กรุณา Log-in ใหม่อีกครั้ง");
+        handleLogout();
+      }
+    }
+  }, 60000);
+}
+
+function formatDateThai(dateStr) {
+  if (!dateStr) return '-';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
+
+function getStatusHistoryEntry(statusName) {
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  const userName = currentUser ? currentUser.name : "System";
+  const now = new Date();
+  const timeStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  return {
+    status: statusName,
+    time: timeStr,
+    user: userName
+  };
+}
+
+async function fetchInitialData() {
+  try {
+    const jobsSnap = await firestoreDb.collection("jobs").get();
+    db.jobs = jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    const carsSnap = await firestoreDb.collection("cars").get();
+    db.cars = carsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    render();
+  } catch (err) {
+    console.error("Error fetching data:", err);
+  }
+}
+
+async function refreshData(btn) {
+  const allRefreshBtns = document.querySelectorAll(".refresh-btn");
+  allRefreshBtns.forEach(b => b.classList.add("spinning"));
+  try {
+    const jobsSnap = await firestoreDb.collection("jobs").get();
+    db.jobs = jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    const carsSnap = await firestoreDb.collection("cars").get();
+    db.cars = carsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    render();
+  } catch (err) {
+    console.error("Error refreshing data:", err);
+  } finally {
+    setTimeout(() => {
+      allRefreshBtns.forEach(b => b.classList.remove("spinning"));
+    }, 500);
+  }
+}
+
+const USERS = {
+  "watchaki@scgjwd.com": { pass: "1234", name: "ผู้ดูแลระบบ (watcharapoom)", role: "ALL", fleetFilter: null },
+     "phanthong": { pass: "1234", name: "ผู้ดูแลระบบ (phanthong)", role: "ALL", fleetFilter: null },
+  "wh_chaiyasit": { pass: "1234", name: "แผนกคลังสินค้า (CHAIYASIT)", role: "WAREHOUSE", fleetFilter: "CHAIYASIT ชัยสิทธิ์ (non SCG)" },
+  "wh2_chaiyasit": { pass: "1234", name: "แผนกคลังสินค้า 2 (CHAIYASIT)", role: "WAREHOUSE", fleetFilter: "CHAIYASIT ชัยสิทธิ์ (non SCG)" },
+  "scgjwd_chaiyasit": { pass: "1234", name: "แผนกโลจิสติกส์ (CHAIYASIT)", role: "LOGISTICS", fleetFilter: "CHAIYASIT ชัยสิทธิ์ (non SCG)" }
+};
+
+let draggedJobId = null;
+let currentEditJobId = null;
+let destinationBlockCounter = 0;
+
+function generateNextJobId() {
+  let maxNum = 0;
+  db.jobs.forEach(j => {
+    if (j.id && j.id.startsWith("JOB-")) {
+      const numPart = parseInt(j.id.replace("JOB-", ""), 10);
+      if (!isNaN(numPart) && numPart > maxNum) {
+        maxNum = numPart;
+      }
+    }
+  });
+  const nextNum = maxNum + 1;
+  return "JOB-" + String(nextNum).padStart(6, '0');
+}
+
+function getOriginCodeInputHtml(fleet, selectedValue = '') {
+  if (fleet === "CHAIYASIT ชัยสิทธิ์ (non SCG)") {
+    const options = ["3A", "3B", "อาคาร6", "7A", "7B", "9A", "9B"];
+    let optHtml = `<option value="">-- เลือก Code จุดขึ้นสินค้า --</option>`;
+    options.forEach(opt => {
+      optHtml += `<option value="${opt}" ${selectedValue === opt ? 'selected' : ''}>${opt}</option>`;
+    });
+    return `<select class="d-origin-code">${optHtml}</select>`;
+  } else {
+    return `<input type="text" class="d-origin-code" value="${selectedValue}" placeholder="ระบุ Code จุดขึ้นสินค้า">`;
+  }
+}
+
+function onFleetChange(fleetValue) {
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  if (currentUser && currentUser.fleetFilter && fleetValue !== currentUser.fleetFilter) {
+    customAlert(`บัญชีของคุณถูกกำหนดให้ใช้งานเฉพาะ Fleet: ${currentUser.fleetFilter} เท่านั้น`);
+    document.getElementById("fleet").value = currentUser.fleetFilter;
+    fleetValue = currentUser.fleetFilter;
+  }
+
+  const origins = document.querySelectorAll(".d-origin");
+  origins.forEach(input => {
+    input.value = fleetValue;
+    input.setAttribute("readonly", true);
+  });
+
+  document.querySelectorAll(".dest-card").forEach(card => {
+    const codeContainer = card.querySelector(".origin-code-field-container");
+    if (codeContainer) {
+      const currentVal = card.querySelector(".d-origin-code") ? card.querySelector(".d-origin-code").value : '';
+      codeContainer.innerHTML = `<label>Code จุดขึ้นสินค้า</label>` + getOriginCodeInputHtml(fleetValue, currentVal);
+    }
+  });
+}
+
+function handleUrgentToggle(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  const isChecked = card.querySelector(".d-urgent-check").checked;
+  const timeContainer = card.querySelector(".urgent-time-container");
+  const remarkInput = card.querySelector(".d-remark");
+
+  if (isChecked) {
+    timeContainer.style.display = "block";
+    updateRemarkText(cardId);
+  } else {
+    timeContainer.style.display = "none";
+    let currentRemark = remarkInput.value;
+    remarkInput.value = currentRemark.replace(/^ด่วน\s*\d{1,2}:\d{2}\s*น\.\s*/, '').trim();
+  }
+}
+
+function updateRemarkText(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  const isChecked = card.querySelector(".d-urgent-check").checked;
+  if (!isChecked) return;
+
+  const timeVal = card.querySelector(".d-urgent-time").value;
+  const remarkInput = card.querySelector(".d-remark");
+  let currentRemark = remarkInput.value;
+
+  currentRemark = currentRemark.replace(/^ด่วน\s*\d{1,2}:\d{2}\s*น\.\s*/, '').trim();
+
+  if (timeVal) {
+    const urgentPrefix = `ด่วน ${timeVal} น. `;
+    remarkInput.value = urgentPrefix + currentRemark;
+  }
+}
+
+function addDestinationBlock(data = null) {
+  destinationBlockCounter++;
+  const id = `dest_${destinationBlockCounter}`;
+  const container = document.getElementById("destinationsContainer");
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  const currentFleet = (currentUser && currentUser.fleetFilter) ? currentUser.fleetFilter : (document.getElementById("fleet") ? document.getElementById("fleet").value : "");
+  const initialCodeValue = data?.originCode || '';
+  const initialOrigin = data?.origin || currentFleet;
+  
+  let isUrgentSaved = false;
+  let savedTime = "08:00";
+  let cleanRemark = data?.remark || '';
+  
+  if (data && data.remark) {
+    const urgentMatch = data.remark.match(/^ด่วน\s*(\d{1,2}:\d{2})\s*น\.\s*/);
+    if (urgentMatch) {
+      isUrgentSaved = true;
+      savedTime = urgentMatch[1];
+      cleanRemark = data.remark.replace(/^ด่วน\s*\d{1,2}:\d{2}\s*น\.\s*/, '');
+    }
+  }
+
+  const div = document.createElement("div");
+  div.className = "dest-card";
+  div.id = id;
+  
+  div.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h4 style="margin:0; color:var(--blue);">📍 สถานที่ส่ง / ปลายทาง (${destinationBlockCounter})</h4>
+      <button type="button" class="danger smallbtn" onclick="document.getElementById('${id}').remove()">ลบสถานที่นี้</button>
+    </div>
+    <div class="grid">
+      <div class="field"><label>สถานที่ขึ้นสินค้า (Place of Loading)</label><input class="d-origin" value="${initialOrigin}" readonly></div>
+      <div class="field origin-code-field-container"><label>Code จุดขึ้นสินค้า</label>${getOriginCodeInputHtml(currentFleet, initialCodeValue)}</div>
+      <div class="field"><label>รหัสลูกค้า</label><input type="text" class="d-customer-code" value="${data?.customerCode || ''}" placeholder="ระบุรหัสลูกค้า"></div>
+      <div class="field">
+        <label>Load</label>
+        <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
+          <input type="text" class="d-load" value="${data?.load || ''}" placeholder="ระบุ Load" style="flex:1;">
+          <label style="display:flex; align-items:center; gap:6px; font-weight:normal; cursor:pointer; margin-bottom:0;">
+            <input type="checkbox" class="d-urgent-check" ${isUrgentSaved ? 'checked' : ''} onchange="handleUrgentToggle('${id}')" style="width:auto; cursor:pointer;"> 
+            <strong style="color: var(--red); font-size: 1.25em;">ด่วน</strong>
+          </label>
+        </div>
+        <div class="urgent-time-container" style="margin-top:6px; display:${isUrgentSaved ? 'block' : 'none'};">
+          <input type="time" class="d-urgent-time" value="${savedTime}" onchange="updateRemarkText('${id}')" style="padding:6px; font-size:12px;">
+        </div>
+      </div>
+      <div class="field"><label>Sold To (ลูกค้า)</label><input class="d-sold-to" value="${data?.soldTo || ''}"></div>
+      <div class="field"><label>Ship To (สถานที่ลงสินค้า)</label><input class="d-ship-to" value="${data?.shipTo || ''}"></div>
+      <div class="field"><label>น้ำหนัก DP (ตัน)</label><input type="number" step="0.01" class="d-weight" value="${data?.weight != null && data?.weight !== '' ? Number(data.weight).toFixed(2) : ''}"></div>
+      <div class="field"><label>Pallet (ตัว)</label><input type="number" class="d-pallet" value="${data?.pallet || ''}"></div>
+      <div class="field full"><label>ที่อยู่จัดส่ง (Address)</label><input class="d-address" value="${data?.address || ''}"></div>
+      <div class="field full"><label>หมายเหตุ (Remark)</label><input type="text" class="d-remark" value="${cleanRemark}" placeholder="ระบุหมายเหตุเพิ่มเติม (ถ้ามี)"></div>
+    </div>
+
+    <div style="margin-top:10px;">
+      <h5 style="margin:0 0 5px 0;">📦 รายการสินค้า</h5>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Due Date</th><th>รหัสสินค้า</th><th>Stock</th><th>น้ำหนัก (ตัน)</th><th>จำนวนสั่ง</th><th>ลบ</th>
+            </tr>
+          </thead>
+          <tbody class="item-rows"></tbody>
+        </table>
+      </div>
+      <button type="button" class="light smallbtn" style="margin-top:5px;" onclick="addItemRow(this)">➕ เพิ่มรายการสินค้า</button>
+    </div>
+  `;
+  container.appendChild(div);
+
+  if (data && data.items && data.items.length > 0) {
+    data.items.forEach(it => addItemRow(div.querySelector("button.light"), it));
+  } else {
+    addItemRow(div.querySelector("button.light"));
+  }
+}
+
+function addItemRow(btn, item = null) {
+  const tbody = btn.previousElementSibling.querySelector(".item-rows");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="date" class="i-date" value="${item?.dueDate || ''}"></td>
+    <td><input type="text" class="i-sku" value="${item?.sku || ''}"></td>
+    <td><input type="number" class="i-stock" value="${item?.stock || ''}"></td>
+    <td><input type="number" step="0.01" class="i-weight" value="${item?.weight || ''}"></td>
+    <td><input type="number" class="i-qty-order" value="${item?.qtyOrder || ''}"></td>
+    <td><button type="button" class="danger smallbtn" onclick="this.closest('tr').remove()">X</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function loadSavedCredentials() {
+  const savedUser = localStorage.getItem("remembered_user");
+  const savedPass = localStorage.getItem("remembered_pass");
+  if (savedUser && savedPass) {
+    document.getElementById("loginUser").value = savedUser;
+    document.getElementById("loginPass").value = savedPass;
+    document.getElementById("rememberMe").checked = true;
+  }
+}
+
+function checkAuth() {
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  if (currentUser) {
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    document.getElementById("userInfoLabel").textContent = `👤 ${currentUser.name}`;
+
+    if (currentUser.fleetFilter) {
+      const globalFilter = document.getElementById("globalFleetFilter");
+      if (globalFilter) { globalFilter.value = currentUser.fleetFilter; globalFilter.disabled = true; }
+      const logisticsFilter = document.getElementById("logisticsFleetFilter");
+      if (logisticsFilter) { logisticsFilter.value = currentUser.fleetFilter; logisticsFilter.disabled = true; }
+      const fleetInput = document.getElementById("fleet");
+      if (fleetInput) { fleetInput.value = currentUser.fleetFilter; fleetInput.disabled = true; }
+      const excelFleet = document.getElementById("excelImportFleet");
+      if (excelFleet) { excelFleet.value = currentUser.fleetFilter; excelFleet.disabled = true; }
+      const bulkFleet = document.getElementById("bulkFleet");
+      if (bulkFleet) { bulkFleet.value = currentUser.fleetFilter; bulkFleet.disabled = true; }
+      
+      const whFleetFilter = document.getElementById("whFleetFilter");
+      if (whFleetFilter) { whFleetFilter.value = currentUser.fleetFilter; whFleetFilter.disabled = true; }
+    }
+
+    const tDash = document.getElementById("tab-dashboard");
+    const tWarehouse = document.getElementById("tab-warehouse");
+    const tLogistics = document.getElementById("tab-logistics");
+    const tDispatch = document.getElementById("tab-dispatch");
+    const tCars = document.getElementById("tab-cars");
+
+    if (currentUser.role === "WAREHOUSE") {
+      tDash.style.display = "none";
+      tLogistics.style.display = "none";
+      tDispatch.style.display = "none";
+      tCars.style.display = "none";
+      tWarehouse.style.display = "inline-block";
+      showPage('warehouse', tWarehouse);
+      
+      if (currentUser.fleetFilter) {
+        const fleetEl = document.getElementById("fleet");
+        if(fleetEl) {
+          fleetEl.value = currentUser.fleetFilter;
+          onFleetChange(currentUser.fleetFilter);
+        }
+      }
+    } else if (currentUser.role === "LOGISTICS") {
+      tDash.style.display = "none";
+      tWarehouse.style.display = "none";
+      tLogistics.style.display = "inline-block";
+      tDispatch.style.display = "inline-block";
+      tCars.style.display = "inline-block";
+      showPage('logistics', tLogistics);
+    } else {
+      tDash.style.display = "inline-block";
+      tWarehouse.style.display = "inline-block";
+      tLogistics.style.display = "inline-block";
+      tDispatch.style.display = "inline-block";
+      tCars.style.display = "inline-block";
+      showPage('dashboard', tDash);
+    }
+  } else {
+    document.getElementById("loginScreen").style.display = "flex";
+    document.getElementById("app").style.display = "none";
+  }
+}
+
+function handleLogin(e) {
+  e.preventDefault();
+  const u = document.getElementById("loginUser").value.trim();
+  const p = document.getElementById("loginPass").value.trim();
+  const rem = document.getElementById("rememberMe").checked;
+
+  if (USERS[u] && USERS[u].pass === p) {
+    if (rem) {
+      localStorage.setItem("remembered_user", u);
+      localStorage.setItem("remembered_pass", p);
+    } else {
+      localStorage.removeItem("remembered_user");
+      localStorage.removeItem("remembered_pass");
+    }
+    sessionStorage.setItem("currentUser", JSON.stringify(USERS[u]));
+    document.getElementById("loginError").style.display = "none";
+    idleTime = 0;
+    checkAuth();
+  } else {
+    document.getElementById("loginError").style.display = "block";
+  }
+}
+
+function handleLogout() {
+  sessionStorage.removeItem("currentUser");
+  ['globalFleetFilter', 'logisticsFleetFilter', 'fleet', 'excelImportFleet', 'bulkFleet', 'whFleetFilter', 'dispatchFleetFilter', 'carsFleetFilter'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.disabled = false;
+  });
+  checkAuth();
+}
+
+function showPage(pageId, el) {
+  document.querySelectorAll(".page.active").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab.active").forEach(t => t.classList.remove("active"));
+  const page=document.getElementById(pageId);
+  if(page) page.classList.add("active");
+  if(el) el.classList.add("active");
+  if(pageId==='dispatch'){
+    requestAnimationFrame(renderDispatchFleetDashboard);
+  }
+}
+
+function collectJobFormData() {
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  const defaultFleet = currentUser && currentUser.fleetFilter ? currentUser.fleetFilter : document.getElementById("fleet").value;
+
+  const destCards = document.querySelectorAll(".dest-card");
+  let destinations = [];
+  let totalWeight = 0;
+  let totalPallet = 0;
+
+  destCards.forEach((card, idx) => {
+    const items = [];
+    card.querySelectorAll(".item-rows tr").forEach(tr => {
+      items.push({
+        dueDate: tr.querySelector(".i-date") ? tr.querySelector(".i-date").value : '',
+        sku: tr.querySelector(".i-sku") ? tr.querySelector(".i-sku").value : '',
+        stock: tr.querySelector(".i-stock") ? tr.querySelector(".i-stock").value : '',
+        weight: Number(tr.querySelector(".i-weight") ? tr.querySelector(".i-weight").value : 0),
+        qtyOrder: Number(tr.querySelector(".i-qty-order") ? tr.querySelector(".i-qty-order").value : 0)
+      });
+    });
+
+    const w = Number(card.querySelector(".d-weight").value || 0);
+    const p = Number(card.querySelector(".d-pallet").value || 0);
+    const l = card.querySelector(".d-load") ? card.querySelector(".d-load").value : '';
+    const r = card.querySelector(".d-remark").value;
+    totalWeight += w;
+    totalPallet += p;
+
+    destinations.push({
+      destNo: idx + 1,
+      origin: card.querySelector(".d-origin").value,
+      originCode: card.querySelector(".d-origin-code") ? card.querySelector(".d-origin-code").value : '',
+      customerCode: card.querySelector(".d-customer-code") ? card.querySelector(".d-customer-code").value : '',
+      soldTo: card.querySelector(".d-sold-to").value,
+      shipTo: card.querySelector(".d-ship-to").value,
+      address: card.querySelector(".d-address").value,
+      weight: w,
+      pallet: p,
+      load: l,
+      remark: r,
+      items: items
+    });
+  });
+
+  return {
+    date: document.getElementById("dueDate").value,
+    fleet: defaultFleet,
+    truck: document.getElementById("requiredTruck").value,
+    jobType: document.getElementById("jobType").value,
+    destinations: destinations,
+    weight: totalWeight,
+    pallet: totalPallet
+  };
+}
+
+async function addJob() {
+  const formData = collectJobFormData();
+  if (!formData.fleet) { customAlert("กรุณาเลือก Fleet"); return; }
+  if (!formData.truck) { customAlert("กรุณาเลือกประเภทรถ"); return; }
+  if (!formData.jobType) { customAlert("กรุณาเลือกประเภทงาน"); return; }
+  if (formData.destinations.length === 0) { customAlert("กรุณาเพิ่มลูกค้าปลายทางอย่างน้อย 1 รายการ"); return; }
+
+  const id = generateNextJobId();
+  const initialHistory = [getStatusHistoryEntry("รอจัดรถ")];
+  
+  const newJob = {
+    id: id,
+    date: formData.date,
+    fleet: formData.fleet,
+    truck: formData.truck,
+    jobType: formData.jobType,
+    destinations: formData.destinations,
+    weight: formData.weight,
+    pallet: formData.pallet,
+    status: "รอจัดรถ",
+    statusHistory: initialHistory,
+    carId: null,
+    createdAt: new Date().toLocaleString("th-TH")
+  };
+
+  try {
+    await firestoreDb.collection("jobs").doc(id).set(newJob);
+    resetJobForm();
+    await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+    customAlert("ส่งงานให้โลจิสติกส์เรียบร้อยแล้ว");
+  } catch (e) {
+    customAlert("เกิดข้อผิดพลาด: " + e.message);
+  }
+}
+
+function resetJobForm() {
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  const forcedFleet = currentUser && currentUser.fleetFilter ? currentUser.fleetFilter : "";
+
+  document.getElementById("jobNo").value = "";
+  document.getElementById("dueDate").value = new Date().toISOString().split('T')[0];
+  document.getElementById("fleet").value = forcedFleet;
+  document.getElementById("requiredTruck").value = "";
+  document.getElementById("jobType").value = "";
+  document.getElementById("destinationsContainer").innerHTML = "";
+  
+  destinationBlockCounter = 0;
+  addDestinationBlock();
+
+  if (forcedFleet) {
+    onFleetChange(forcedFleet);
+  }
+
+  document.getElementById("formTitle").textContent = "🏭 แจ้งงานขนส่ง";
+  document.getElementById("submitBtn").style.display = "inline-block";
+  document.getElementById("updateBtn").style.display = "none";
+  document.getElementById("cancelEditBtn").style.display = "none";
+  document.getElementById("jobFormCard").classList.remove("edit-mode");
+  currentEditJobId = null;
+}
+
+function editJob(id) {
+  const j = db.jobs.find(x => x.id === id);
+  if (!j) return;
+
+  currentEditJobId = id;
+  document.getElementById("jobNo").value = j.id;
+  document.getElementById("dueDate").value = j.date || '';
+  document.getElementById("fleet").value = j.fleet || '';
+  document.getElementById("requiredTruck").value = j.truck || '';
+  document.getElementById("jobType").value = j.jobType || '';
+
+  document.getElementById("destinationsContainer").innerHTML = "";
+  destinationBlockCounter = 0;
+
+  if (j.destinations && j.destinations.length > 0) {
+    j.destinations.forEach(d => addDestinationBlock(d));
+  } else {
+    addDestinationBlock();
+  }
+
+  document.getElementById("formTitle").textContent = `📝 แก้ไขรายการงาน (${j.id})`;
+  document.getElementById("submitBtn").style.display = "none";
+  document.getElementById("updateBtn").style.display = "inline-block";
+  document.getElementById("cancelEditBtn").style.display = "inline-block";
+  document.getElementById("jobFormCard").classList.add("edit-mode");
+}
+
+function cancelEdit() {
+  resetJobForm();
+}
+
+async function updateJob() {
+  if (!currentEditJobId) return;
+  const formData = collectJobFormData();
+
+  try {
+    await firestoreDb.collection("jobs").doc(currentEditJobId).update({
+      date: formData.date,
+      fleet: formData.fleet,
+      truck: formData.truck,
+      jobType: formData.jobType,
+      destinations: formData.destinations,
+      weight: formData.weight,
+      pallet: formData.pallet
+    });
+    resetJobForm();
+    await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+    customAlert("บันทึกการแก้ไขเรียบร้อยแล้ว");
+  } catch (e) {
+    customAlert("เกิดข้อผิดพลาด: " + e.message);
+  }
+}
+
+async function deleteJob(id) {
+  const isConfirmed = await customConfirm("ยืนยันการลบรายการงานนี้?");
+  if (isConfirmed) {
+    try {
+      const j = db.jobs.find(x => x.id === id);
+      if (j && j.carId) {
+        await firestoreDb.collection("cars").doc(j.carId).update({ status: "ว่าง" });
+      }
+      await firestoreDb.collection("jobs").doc(id).delete();
+      await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+    } catch (e) {
+      customAlert("เกิดข้อผิดพลาด: " + e.message);
+    }
+  }
+}
+
+function stageMatchJob(jobId, carId) {
+  if (!carId) {
+    delete pendingMatches[jobId];
+  } else {
+    const j = db.jobs.find(x => x.id === jobId);
+    const c = db.cars.find(x => x.id === carId);
+
+    if (j && c) {
+      if (j.fleet !== c.fleet) {
+        customAlert(`ไม่สามารถจับคู่ได้ เนื่องจาก Fleet ไม่ตรงกัน\nงาน: ${j.fleet}\nรถ: ${c.fleet}`);
+        render();
+        return;
+      }
+      if (j.truck !== c.type) {
+        customAlert(`ไม่สามารถจับคู่ได้ เนื่องจากประเภทรถไม่ตรงกัน\nงานต้องการประเภท: ${j.truck}\nรถที่เลือกประเภท: ${c.type}`);
+        render();
+        return;
+      }
+      
+      if (c.status !== "ว่าง") {
+        customAlert(`ไม่สามารถจับคู่ได้ เนื่องจากรถคันนี้มีสถานะ "${c.status}" แล้ว`);
+        render();
+        return;
+      }
+      
+      // อิสระในการจับคู่: ถ้ารถคันนี้มีงานอื่นค้างอยู่แล้ว ให้ปลดงานเดิมออกอัตโนมัติ แล้วจับคู่งานใหม่แทน
+      // (ไม่บล็อกด้วย alert อีกต่อไป เพื่อให้ผู้ใช้ลากสลับงาน/รถได้อย่างลื่นไหล)
+      const alreadyAssignedJob = Object.keys(pendingMatches).find(k => pendingMatches[k] === c.id && k !== jobId);
+      if (alreadyAssignedJob) {
+        delete pendingMatches[alreadyAssignedJob];
+      }
+
+      pendingMatches[jobId] = carId;
+    }
+  }
+  render();
+}
+
+// ปลดงานที่ลากไปจับคู่ค้างไว้ (ยังไม่ได้กดยืนยัน) ออกจากรถ กลับไปอยู่ในรายการงานรอจัดรถ
+function unstageJob(jobId) {
+  delete pendingMatches[jobId];
+  render();
+}
+
+function renderPendingActionsBar() {
+  const count = Object.keys(pendingMatches).length;
+  const bar = document.getElementById("pendingActionsBar");
+  if (bar) {
+    if (count > 0) {
+      bar.style.display = "block";
+      document.getElementById("pendingCount").textContent = count;
+    } else {
+      bar.style.display = "none";
+    }
+  }
+}
+
+async function confirmAllMatches() {
+  const jobIds = Object.keys(pendingMatches);
+  if (jobIds.length === 0) return;
+
+  const isConfirmed = await customConfirm(`ต้องการยืนยันการจับคู่ทั้งหมด ${jobIds.length} รายการพร้อมกันหรือไม่?`, { title: 'ยืนยันการจับคู่' });
+  if (!isConfirmed) return;
+
+  const batch = firestoreDb.batch();
+
+  try {
+    for (let jobId of jobIds) {
+      const carId = pendingMatches[jobId];
+      const j = db.jobs.find(x => x.id === jobId);
+      const c = db.cars.find(x => x.id === carId);
+
+      if (j && c) {
+        if (c.status !== "ว่าง") {
+          throw new Error(`รถทะเบียน ${c.plate} มีสถานะ "มีงานแล้ว" ไม่สามารถทำรายการซ้ำได้`);
+        }
+        const jobRef = firestoreDb.collection("jobs").doc(jobId);
+        const carRef = firestoreDb.collection("cars").doc(carId);
+
+        const newHistoryEntry = getStatusHistoryEntry("จัดรถแล้ว");
+        batch.update(jobRef, { 
+          carId: carId, 
+          status: "จัดรถแล้ว",
+          statusHistory: firebase.firestore.FieldValue.arrayUnion(newHistoryEntry)
+        });
+        batch.update(carRef, { status: "มีงานแล้ว" });
+      }
+    }
+
+    await batch.commit();
+    pendingMatches = {};
+    renderPendingActionsBar();
+    await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+    customAlert("บันทึกการจับคู่ทั้งหมดเรียบร้อยแล้ว", 'success');
+  } catch (e) {
+    customAlert("เกิดข้อผิดพลาดในการบันทึก: " + e.message, 'danger');
+    render();
+  }
+}
+
+function clearPendingMatches() {
+  pendingMatches = {};
+  renderPendingActionsBar();
+  render();
+}
+
+function getSelectedDispatchJobIds() {
+  return Array.from(document.querySelectorAll('.dispatch-job-select:checked')).map(cb => cb.value);
+}
+function toggleAllDispatchJobs(checked) {
+  document.querySelectorAll('.dispatch-job-select').forEach(cb => cb.checked = checked);
+  updateDispatchSelectionUI();
+}
+function updateDispatchSelectionUI() {
+  const selected = getSelectedDispatchJobIds();
+  const countEl = document.getElementById('dispatchSelectedCount');
+  if (countEl) countEl.textContent = selected.length ? `เลือกแล้ว ${selected.length} งาน` : 'ยังไม่ได้เลือกงาน';
+  const all = Array.from(document.querySelectorAll('.dispatch-job-select'));
+  const master = document.getElementById('dispatchSelectAll');
+  if (master) { master.checked = all.length > 0 && all.every(cb => cb.checked); master.indeterminate = all.some(cb => cb.checked) && !master.checked; }
+}
+async function bulkStartTransit() {
+  const ids=getSelectedDispatchJobIds(); if(!ids.length) return customAlert('กรุณาเลือกงานที่ต้องการเปลี่ยนเป็น "อยู่ระหว่างขนส่ง" ก่อน','danger');
+  const eligible=ids.filter(id=>{const j=db.jobs.find(x=>x.id===id);return j&&j.status==='พิมพ์ใบงานแล้ว';});
+  if(!eligible.length) return customAlert('งานที่เลือกไม่มีงานสถานะ "พิมพ์ใบงานแล้ว" ที่สามารถเริ่มขนส่งได้','danger');
+  if(!(await customConfirm(`ยืนยันเปลี่ยน ${eligible.length} งานเป็น "อยู่ระหว่างขนส่ง" หรือไม่?`))) return;
+  try { const batch=firestoreDb.batch(); eligible.forEach(id=>batch.update(firestoreDb.collection('jobs').doc(id),{status:'อยู่ระหว่างขนส่ง',statusHistory:firebase.firestore.FieldValue.arrayUnion(getStatusHistoryEntry('อยู่ระหว่างขนส่ง'))})); await batch.commit(); await refreshData({classList:{add:()=>{},remove:()=>{}}}); customAlert(`เปลี่ยนสถานะ ${eligible.length} งานเป็น "อยู่ระหว่างขนส่ง" เรียบร้อยแล้ว`,'success'); } catch(e){customAlert('เกิดข้อผิดพลาด: '+e.message,'danger');}
+}
+async function bulkCompleteJobs() {
+  const ids=getSelectedDispatchJobIds(); if(!ids.length) return customAlert('กรุณาเลือกงานที่ต้องการจัดส่งเสร็จสมบูรณ์ก่อน','danger');
+  const eligible=ids.filter(id=>{const j=db.jobs.find(x=>x.id===id);return j&&j.status==='อยู่ระหว่างขนส่ง';});
+  if(!eligible.length) return customAlert('งานที่เลือกไม่มีงานสถานะ "อยู่ระหว่างขนส่ง" ที่สามารถปิดงานได้','danger');
+  if(!(await customConfirm(`ยืนยันจัดส่งเสร็จสมบูรณ์ ${eligible.length} งานหรือไม่?\nระบบจะคืนสถานะรถของงานที่เลือก`))) return;
+  try { const batch=firestoreDb.batch(); eligible.forEach(id=>{const j=db.jobs.find(x=>x.id===id);if(j.carId) batch.update(firestoreDb.collection('cars').doc(j.carId),{status:'ว่าง'});batch.update(firestoreDb.collection('jobs').doc(id),{status:'จัดส่งเสร็จสมบูรณ์',statusHistory:firebase.firestore.FieldValue.arrayUnion(getStatusHistoryEntry('จัดส่งเสร็จสมบูรณ์'))});}); await batch.commit(); await refreshData({classList:{add:()=>{},remove:()=>{}}}); customAlert(`จัดส่งเสร็จสมบูรณ์ ${eligible.length} งาน และคืนสถานะรถเรียบร้อยแล้ว`,'success'); } catch(e){customAlert('เกิดข้อผิดพลาด: '+e.message,'danger');}
+}
+
+async function startTransitJob(jobId) {
+  const j = db.jobs.find(x => x.id === jobId);
+  if (!j) return;
+  if (j.status !== "พิมพ์ใบงานแล้ว") {
+    return customAlert("งานนี้ต้องพิมพ์ใบงานแล้วก่อน จึงจะเปลี่ยนเป็นสถานะ \"อยู่ระหว่างขนส่ง\" ได้", "danger");
+  }
+
+  const isConfirmed = await customConfirm(`ยืนยันเริ่มขนส่งงาน ${j.id}?\nสถานะงานจะเปลี่ยนเป็น "อยู่ระหว่างขนส่ง"`);
+  if (isConfirmed) {
+    try {
+      const newHistoryEntry = getStatusHistoryEntry("อยู่ระหว่างขนส่ง");
+      await firestoreDb.collection("jobs").doc(jobId).update({
+        status: "อยู่ระหว่างขนส่ง",
+        statusHistory: firebase.firestore.FieldValue.arrayUnion(newHistoryEntry)
+      });
+      await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+      customAlert("เปลี่ยนสถานะเป็น \"อยู่ระหว่างขนส่ง\" เรียบร้อยแล้ว");
+    } catch (e) {
+      customAlert("เกิดข้อผิดพลาด: " + e.message);
+    }
+  }
+}
+
+async function completeJob(jobId) {
+  const j = db.jobs.find(x => x.id === jobId);
+  if (!j) return;
+  if (j.status !== "อยู่ระหว่างขนส่ง") {
+    return customAlert("งานนี้ต้องอยู่ในสถานะ \"อยู่ระหว่างขนส่ง\" ก่อน จึงจะจัดส่งเสร็จสมบูรณ์ได้", "danger");
+  }
+
+  const isConfirmed = await customConfirm(`ยืนยันจัดส่งเสร็จสมบูรณ์งาน ${j.id}?\nระบบจะคืนสถานะรถเพื่อให้กลับมารับงานใหม่`);
+  if (isConfirmed) {
+    try {
+      if (j.carId) {
+        await firestoreDb.collection("cars").doc(j.carId).update({ status: "ว่าง" });
+      }
+      const newHistoryEntry = getStatusHistoryEntry("จัดส่งเสร็จสมบูรณ์");
+      await firestoreDb.collection("jobs").doc(jobId).update({
+        status: "จัดส่งเสร็จสมบูรณ์",
+        statusHistory: firebase.firestore.FieldValue.arrayUnion(newHistoryEntry)
+      });
+      await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+      customAlert("จบงานขนส่งเรียบร้อย และคืนสถานะรถเรียบร้อยแล้ว");
+    } catch (e) {
+      customAlert("เกิดข้อผิดพลาด: " + e.message);
+    }
+  }
+}
+
+async function revertJobStatus(jobId) {
+  const j = db.jobs.find(x => x.id === jobId);
+  if (!j) return;
+  
+  const isConfirmed = await customConfirm(`ยกเลิกการ Match งาน ${j.id} ใช่หรือไม่?`);
+  if (isConfirmed) {
+    try {
+      if (j.carId) {
+        await firestoreDb.collection("cars").doc(j.carId).update({ status: "ว่าง" });
+      }
+      const newHistoryEntry = getStatusHistoryEntry("รอจัดรถ");
+      await firestoreDb.collection("jobs").doc(jobId).update({ 
+        carId: null, 
+        status: "รอจัดรถ",
+        statusHistory: firebase.firestore.FieldValue.arrayUnion(newHistoryEntry)
+      });
+      await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+    } catch (e) {
+      customAlert("เกิดข้อผิดพลาด: " + e.message);
+    }
+  }
+}
+
+async function printJob(id) {
+  const j = db.jobs.find(x => x.id === id);
+  if (!j) return;
+  const c = db.cars.find(x => x.id === j.carId);
+  if (!c) return customAlert("ยังไม่ได้จับคู่รถ ไม่สามารถพิมพ์ใบกำกับสินค้าได้");
+
+  let urgentText = "";
+  if (j.destinations && j.destinations.length > 0) {
+    for (let dest of j.destinations) {
+      if (dest.remark) {
+        const match = dest.remark.match(/ด่วน\s*(\d{1,2}:\d{2}\s*น\.)/);
+        if (match) {
+          urgentText = `ด่วน ${match[1]}`;
+          break;
+        } else if (dest.remark.includes("ด่วน")) {
+          urgentText = "ด่วน";
+          break;
+        }
+      }
+    }
+  }
+
+  const urgentHtml = urgentText ? `<span style="color: #dc2626; font-weight: bold; margin-right: 6px;">[${urgentText}]</span>` : "";
+
+  document.getElementById("pBarcodeNo").innerHTML = urgentHtml + j.id;
+  document.getElementById("pDoc").textContent = j.id;
+  document.getElementById("pPlateLMS").textContent = c.plate;
+  document.getElementById("pTotalWeight").textContent = `${j.weight != null && j.weight !== '' ? Number(j.weight).toFixed(2) : '0.00'} ตัน`;
+  document.getElementById("pCreateDate").textContent = j.createdAt || "-";
+  document.getElementById("pPrintDate").textContent = new Date().toLocaleString("th-TH");
+
+  document.getElementById("pTruckDoc").textContent = c.type;
+  document.getElementById("pDueDatePrint").textContent = formatDateThai(j.date) || '-';
+  document.getElementById("pJobType").textContent = j.jobType || '-'; 
+  document.getElementById("pTruckReq").textContent = j.truck || '-';
+  document.getElementById("pPlate").textContent = c.plate;
+  document.getElementById("pDriver").textContent = c.driver || '-';
+
+  let html = "";
+  (j.destinations || []).forEach((dest) => {
+    html += `
+      <div style="border:1px solid #888; border-radius:6px; padding:10px 12px; margin-bottom:12px; page-break-inside: avoid; background:#fff;">
+        <div style="font-weight:bold; font-size:14px; border-bottom:1px dashed #ccc; padding-bottom:5px; margin-bottom:6px;">
+          📍 ลูกค้าที่ ${dest.destNo} &nbsp;|&nbsp; Place of Loading: <span style="font-weight:normal;">${dest.origin || '-'}</span> 
+          &nbsp;&nbsp; Code จุดขึ้นสินค้า: <span style="font-weight:normal;">${dest.originCode || '-'}</span>
+          &nbsp;&nbsp; รหัสลูกค้า: <span style="font-weight:normal;">${dest.customerCode || '-'}</span>
+        </div>
+        <div style="font-size:13.5px; margin-bottom: 5px;"><b>Sold To (ลูกค้า):</b> ${dest.soldTo || '-'} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Ship To (สถานที่ลงสินค้า):</b> ${dest.shipTo || '-'}</div>
+        <div style="font-size:13.5px; margin-bottom: 5px;"><b>Address (ที่อยู่จัดส่ง):</b> ${dest.address || '-'}</div>
+        <div style="font-size:13.5px; margin-bottom: 5px;"><b>หมายเหตุ (Remark):</b> ${dest.remark || '-'}</div>
+        <div style="font-size:13.5px; text-align:right; margin-bottom: 5px;"><b>Weight DP:</b> ${dest.weight || 0} ตัน &nbsp;&nbsp;|&nbsp;&nbsp; <b>Pallet:</b> ${dest.pallet || 0} ตัว &nbsp;&nbsp;|&nbsp;&nbsp; <b>Load:</b> ${dest.load || 0}</div>
+
+        <table class="ptable">
+          <thead>
+            <tr>
+              <th>No.</th><th>Due Date</th><th>รหัสสินค้า</th><th>Stock</th><th>น้ำหนัก (ตัน)</th><th>จำนวนสั่ง</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(dest.items || []).map((it, idx) => `
+              <tr>
+                <td>${idx + 1}</td>
+                <td>${formatDateThai(it.dueDate) || ''}</td>
+                <td>${it.sku || ''}</td>
+                <td>${it.stock || ''}</td>
+                <td>${it.weight || ''}</td>
+                <td>${it.qtyOrder || ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  });
+
+  document.getElementById("pDestinationsList").innerHTML = html;
+
+  try {
+    if (j.status === "จัดรถแล้ว") {
+      const newHistoryEntry = getStatusHistoryEntry("พิมพ์ใบงานแล้ว");
+      await firestoreDb.collection("jobs").doc(j.id).update({ status: "พิมพ์ใบงานแล้ว", statusHistory: firebase.firestore.FieldValue.arrayUnion(newHistoryEntry) });
+      await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+    }
+    const originalTitle = document.title;
+    document.title = ""; 
+    setTimeout(() => {
+      window.print();
+      document.title = originalTitle;
+    }, 100);
+  } catch (e) {
+    customAlert("เกิดข้อผิดพลาดในการพิมพ์: " + e.message);
+  }
+}
+
+function clearWarehouseFilters() {
+  document.getElementById('whStartDate').value = '';
+  document.getElementById('whEndDate').value = '';
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  if (!currentUser || !currentUser.fleetFilter) {
+    document.getElementById('whFleetFilter').value = 'ALL';
+  }
+  document.getElementById('whStatusFilter').value = 'ALL';
+  render();
+}
+
+function exportWarehouseExcel() {
+  const table = document.getElementById('warehouseRows').parentElement;
+  if (!table) return customAlert("ไม่พบข้อมูลตารางสำหรับ Export");
+  const wb = XLSX.utils.table_to_book(table, {sheet: "WarehouseJobs"});
+  XLSX.writeFile(wb, "Warehouse_Jobs_Export.xlsx");
+}
+
+async function importCarsFromExcel() {
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  const fileInput = document.getElementById("excelFileInput");
+  const fleet = currentUser && currentUser.fleetFilter ? currentUser.fleetFilter : document.getElementById("excelImportFleet").value;
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    return customAlert("กรุณาเลือกไฟล์ Excel (.xlsx, .xls, .csv) ก่อนครับ");
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet);
+
+      if (rows.length === 0) {
+        return customAlert("ไม่พบข้อมูลในไฟล์ที่เลือก กรุณาตรวจสอบไฟล์อีกครั้ง");
+      }
+
+      const batch = firestoreDb.batch();
+      let importedCount = 0;
+
+      rows.forEach((row) => {
+        const plate = row['ทะเบียนรถ'] || row['plate'] || row['Plate'];
+        const typeRaw = row['ประเภทรถ'] || row['type'] || row['Type'] || '4W';
+        const driver = row['พนักงานขับรถ'] || row['driver'] || row['Driver'] || '';
+        const phone = row['เบอร์โทรศัพท์'] || row['phone'] || row['Phone'] || '';
+
+        let validTypes = ['4W', '4W Jumbo', '6W', '6W พ่วง', '10W'];
+        let type = String(typeRaw).trim();
+        if (!validTypes.includes(type)) {
+          type = '4W';
+        }
+
+        if (plate) {
+          const docId = "CAR-" + String(Date.now()).slice(-5) + Math.floor(Math.random() * 1000);
+          const carRef = firestoreDb.collection("cars").doc(docId);
+          
+          batch.set(carRef, {
+            id: docId,
+            fleet: fleet,
+            plate: String(plate).trim(),
+            type: type,
+            driver: String(driver).trim(),
+            phone: String(phone).trim(),
+            status: "ว่าง"
+          });
+          importedCount++;
+        }
+      });
+
+      if (importedCount > 0) {
+        await batch.commit();
+        fileInput.value = "";
+        await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+        customAlert(`✅ นำเข้าข้อมูลรถเข้าสู่ระบบเรียบร้อยแล้วจำนวน ${importedCount} คัน!`);
+      } else {
+        customAlert("❌ ไม่พบข้อมูลทะเบียนรถที่ถูกต้องในไฟล์ กรุณาตรวจสอบหัวข้อคอลัมน์ใน Excel");
+      }
+    } catch (err) {
+      console.error(err);
+      customAlert("เกิดข้อผิดพลาดในการอ่านไฟล์: " + err.message);
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function downloadCarTemplate() {
+  const templateData = [
+    { "ทะเบียนรถ": "70-1234", "ประเภทรถ": "4W", "พนักงานขับรถ": "นายสมชาย ใจดี", "เบอร์โทรศัพท์": "0812345678" },
+    { "ทะเบียนรถ": "70-5678", "ประเภทรถ": "4W Jumbo", "พนักงานขับรถ": "นายมั่นคง ขยัน", "เบอร์โทรศัพท์": "0898765432" },
+    { "ทะเบียนรถ": "71-9999", "ประเภทรถ": "6W", "พนักงานขับรถ": "นายวิชัย ส่งไว", "เบอร์โทรศัพท์": "0861112233" },
+    { "ทะเบียนรถ": "72-8888", "ประเภทรถ": "6W พ่วง", "พนักงานขับรถ": "นายสมศักดิ์ ปลอดภัย", "เบอร์โทรศัพท์": "0854445566" },
+    { "ทะเบียนรถ": "73-7777", "ประเภทรถ": "10W", "พนักงานขับรถ": "นายชาญชัย กล้าหาญ", "เบอร์โทรศัพท์": "0823334455" }
+  ];
+
+  const ws = XLSX.utils.json_to_sheet(templateData);
+
+  ws['!cols'] = [
+    { wch: 15 },
+    { wch: 20 },
+    { wch: 25 },
+    { wch: 18 }
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Car_Import_Template");
+
+  XLSX.writeFile(wb, "Template_Import_Cars_SCGJWD.xlsx");
+}
+
+function addMultiCarRow() {
+  const tbody = document.getElementById("multiCarRows");
+  const count = tbody.children.length + 1;
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${count}</td>
+    <td><input type="text" class="c-plate" placeholder="เช่น 70-1234"></td>
+    <td>
+      <select class="c-type">
+        <option value="4W">4W</option>
+        <option value="4W Jumbo">4W Jumbo</option>
+        <option value="6W">6W</option>
+        <option value="6W พ่วง">6W พ่วง</option>
+        <option value="10W">10W</option>
+      </select>
+    </td>
+    <td><input type="text" class="c-driver" placeholder="ชื่อ-นามสกุล"></td>
+    <td><input type="text" class="c-phone" placeholder="08x-xxx-xxxx"></td>
+    <td><button class="danger smallbtn" onclick="this.closest('tr').remove()">X</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+async function saveMultipleCars() {
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  const fleet = currentUser && currentUser.fleetFilter ? currentUser.fleetFilter : document.getElementById("bulkFleet").value;
+  const rows = document.querySelectorAll("#multiCarRows tr");
+  let count = 0;
+
+  for (let row of rows) {
+    const plate = row.querySelector(".c-plate").value.trim();
+    const type = row.querySelector(".c-type").value;
+    const driver = row.querySelector(".c-driver").value.trim();
+    const phone = row.querySelector(".c-phone").value.trim();
+
+    if (plate) {
+      const id = "CAR-" + String(Date.now()).slice(-5) + Math.floor(Math.random()*100);
+      await firestoreDb.collection("cars").doc(id).set({
+        id: id,
+        fleet: fleet,
+        plate: plate,
+        type: type,
+        driver: driver,
+        phone: phone,
+        status: "ว่าง"
+      });
+      count++;
+    }
+  }
+
+  if (count > 0) {
+    document.getElementById("multiCarRows").innerHTML = "";
+    addMultiCarRow();
+    await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+    customAlert(`บันทึกเพิ่มรถเรียบร้อยแล้ว ${count} คัน`);
+  } else {
+    customAlert("กรุณากรอกข้อมูลทะเบียนรถอย่างน้อย 1 คัน");
+  }
+}
+
+function openEditCarModal(id) {
+  const c = db.cars.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById("editCarId").value = c.id;
+  document.getElementById("editCarFleet").value = c.fleet;
+  document.getElementById("editCarPlate").value = c.plate;
+  document.getElementById("editCarType").value = c.type;
+  document.getElementById("editCarDriver").value = c.driver || '';
+  document.getElementById("editCarPhone").value = c.phone || '';
+  document.getElementById("editCarModal").classList.add("active");
+}
+
+function closeCarModal() {
+  document.getElementById("editCarModal").classList.remove("active");
+}
+
+async function updateCar() {
+  const id = document.getElementById("editCarId").value;
+  try {
+    await firestoreDb.collection("cars").doc(id).update({
+      fleet: document.getElementById("editCarFleet").value,
+      plate: document.getElementById("editCarPlate").value,
+      type: document.getElementById("editCarType").value,
+      driver: document.getElementById("editCarDriver").value,
+      phone: document.getElementById("editCarPhone").value
+    });
+    closeCarModal();
+    await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+  } catch (e) {
+    customAlert("เกิดข้อผิดพลาด: " + e.message);
+  }
+}
+
+async function deleteCar(id) {
+  const isConfirmed = await customConfirm("ยืนยันการลบรถคันนี้ออกจากระบบ?");
+  if (isConfirmed) {
+    try {
+      await firestoreDb.collection("cars").doc(id).delete();
+      await refreshData({ classList: { add:()=>{}, remove:()=>{} } });
+    } catch (e) {
+      customAlert("เกิดข้อผิดพลาด: " + e.message);
+    }
+  }
+}
+
+let renderQueued = false;
+function requestRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    render();
+  });
+}
+function runWhenIdle(fn) {
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(fn, { timeout: 180 });
+  } else {
+    setTimeout(fn, 0);
+  }
+}
+
+function render() {
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  const forcedFleet = currentUser && currentUser.fleetFilter ? currentUser.fleetFilter : null;
+
+  const accessibleJobs = forcedFleet ? db.jobs.filter(j => j.fleet === forcedFleet) : db.jobs;
+  const accessibleCars = forcedFleet ? db.cars.filter(c => c.fleet === forcedFleet) : db.cars;
+
+  const wRows = document.getElementById("warehouseRows");
+  const whStart = document.getElementById("whStartDate") ? document.getElementById("whStartDate").value : "";
+  const whEnd = document.getElementById("whEndDate") ? document.getElementById("whEndDate").value : "";
+  const whFleet = document.getElementById("whFleetFilter") ? document.getElementById("whFleetFilter").value : "ALL";
+  const whStatus = document.getElementById("whStatusFilter") ? document.getElementById("whStatusFilter").value : "ALL";
+
+  // รายการงานคลังหลังผ่านตัวกรอง (วันที่ / Fleet / สถานะ) — ใช้ร่วมกันทั้งตาราง, Pie Chart และตัวเลขสรุปด้านล่าง Pie Chart
+  const filteredWarehouseJobs = accessibleJobs.filter(j => {
+    let matchStart = !whStart || (j.date && j.date >= whStart);
+    let matchEnd = !whEnd || (j.date && j.date <= whEnd);
+    let matchFleet = whFleet === "ALL" || j.fleet === whFleet;
+    let matchStatus = whStatus === "ALL" || j.status === whStatus;
+    return matchStart && matchEnd && matchFleet && matchStatus;
+  });
+
+  if(wRows) {
+    if (filteredWarehouseJobs.length === 0) {
+      wRows.innerHTML = `<tr><td colspan="10" class="empty">ไม่พบรายการงานที่ตรงกับเงื่อนไขการกรอง</td></tr>`;
+    } else {
+      wRows.innerHTML = filteredWarehouseJobs.map(j => {
+        const soldTos = (j.destinations || []).map(d => d.soldTo).filter(Boolean).join(', ');
+        const customerCodes = (j.destinations || []).map(d => d.customerCode).filter(Boolean).join(', ');
+        
+        const latestHistory = (j.statusHistory && j.statusHistory.length > 0) ? j.statusHistory[j.statusHistory.length - 1] : null;
+        const currentStatus = j.status || (latestHistory ? latestHistory.status : 'รอจัดรถ');
+        const currentBadgeClass = currentStatus === 'รอจัดรถ' ? 'wait' : currentStatus === 'จัดรถแล้ว' ? 'matched' : currentStatus === 'พิมพ์ใบงานแล้ว' ? 'printed' : currentStatus === 'อยู่ระหว่างขนส่ง' ? 'transit' : 'completed';
+        const historyEntries = (j.statusHistory && j.statusHistory.length > 0) ? [...j.statusHistory].reverse() : [];
+        let historyHtml = `<div class="status-history-cell">
+          <div class="status-current-row">
+            <span class="badge ${currentBadgeClass}" style="font-size:10px; padding:2px 6px;">${currentStatus}</span>
+            ${historyEntries.length > 1 ? `<button type="button" class="status-history-toggle" id="status-toggle-${j.id}" title="แสดง/ซ่อนประวัติ" onclick="toggleStatusHistory('${j.id}')">▼</button>` : ''}
+          </div>
+          ${latestHistory ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;">📅 ${latestHistory.time || '-'} (${latestHistory.user || '-'})</div>` : ''}
+          ${historyEntries.length > 1 ? `<div class="status-history-list" id="status-history-${j.id}">
+            ${historyEntries.slice(1).map(h => {
+              const badgeClass = h.status === 'รอจัดรถ' ? 'wait' : h.status === 'จัดรถแล้ว' ? 'matched' : h.status === 'พิมพ์ใบงานแล้ว' ? 'printed' : h.status === 'อยู่ระหว่างขนส่ง' ? 'transit' : 'completed';
+              return `<div class="status-history-item"><span class="badge ${badgeClass}" style="font-size:10px;padding:2px 6px;">${h.status}</span> <span style="font-size:11px;color:var(--muted);">📅 ${h.time || '-'} (${h.user || '-'})</span></div>`;
+            }).join('')}
+          </div>` : ''}
+        </div>`;
+
+        return `
+          <tr>
+            <td><b>${j.id}</b></td>
+            <td>${j.fleet}</td>
+            <td>${formatDateThai(j.date) || '-'}</td>
+            <td>${soldTos || '-'}</td>
+            <td>${customerCodes || '-'}</td>
+            <td>${j.truck || '-'}</td>
+            <td>${j.weight ? Number(j.weight).toFixed(2) : '0.000'}</td>
+            <td>${j.pallet || 0}</td>
+            <td>${historyHtml}</td>
+            <td class="row-actions">
+              ${j.status === 'รอจัดรถ' ? `
+                <button class="warning smallbtn" onclick="editJob('${j.id}')">แก้ไข</button>
+                <button class="danger smallbtn" onclick="deleteJob('${j.id}')">ลบ</button>
+              ` : `<span class="hint">ล็อกการแก้ไข</span>`}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+
+  const sAllVal = filteredWarehouseJobs.length;
+  const sWaitVal = filteredWarehouseJobs.filter(x => x.status === "รอจัดรถ").length;
+  const sMatchVal = filteredWarehouseJobs.filter(x => x.status === "จัดรถแล้ว").length;
+  const sPrintVal = filteredWarehouseJobs.filter(x => x.status === "พิมพ์ใบงานแล้ว").length;
+  const sTransitVal = filteredWarehouseJobs.filter(x => x.status === "อยู่ระหว่างขนส่ง").length;
+  const sCompletedVal = filteredWarehouseJobs.filter(x => x.status === "จัดส่งเสร็จสมบูรณ์").length;
+
+  setStatValue("sAll", sAllVal);
+  setStatValue("sWait", sWaitVal);
+  setStatValue("sMatch", sMatchVal);
+  setStatValue("sPrint", sPrintVal);
+  setStatValue("sTransit", sTransitVal);
+  setStatValue("sCompleted", sCompletedVal);
+
+  runWhenIdle(() => renderWarehousePieChart(filteredWarehouseJobs));
+
+  const logisticsFleetFilter = forcedFleet || (document.getElementById("logisticsFleetFilter") ? document.getElementById("logisticsFleetFilter").value : "ALL");
+  const truckCategories = ["4W", "4W Jumbo", "6W", "6W พ่วง", "10W"];
+
+  const availCars = document.getElementById("availableCars");
+  const carsCountEl = document.getElementById("carsCount");
+  if(availCars) {
+    const filteredCarsForLogistics = accessibleCars.filter(c => (logisticsFleetFilter === "ALL" || c.fleet === logisticsFleetFilter) && c.status === "ว่าง");
+    const logisticsTypeCounts = document.getElementById("logisticsTypeCounts");
+    if (logisticsTypeCounts) logisticsTypeCounts.innerHTML = truckCategories.map(t => {
+      const n = filteredCarsForLogistics.filter(c => c.type === t).length;
+      return `<span class="type-count-chip">${t}: ${n} คัน</span>`;
+    }).join('');
+    if(carsCountEl) carsCountEl.textContent = filteredCarsForLogistics.length;
+
+    if(filteredCarsForLogistics.length === 0) {
+      availCars.innerHTML = `<div class="lg-empty">🚫 ไม่พบข้อมูลรถพร้อมรับงานใน Fleet นี้</div>`;
+    } else {
+      let carsHtml = "";
+      truckCategories.forEach(truckType => {
+        const carsOfType = filteredCarsForLogistics.filter(c => c.type === truckType);
+        if(carsOfType.length > 0) {
+          carsHtml += `<div class="lg-group-label">🚛 ประเภทรถ: ${truckType} • ${carsOfType.length} คัน</div>`;
+
+          carsOfType.forEach(c => {
+            const assignedJobId = Object.keys(pendingMatches).find(k => pendingMatches[k] === c.id);
+            const isPending = !!assignedJobId;
+            const job = isPending ? db.jobs.find(x => x.id === assignedJobId) : null;
+            const soldTos = job ? (job.destinations || []).map(d => d.soldTo).filter(Boolean).join(', ') : '';
+
+            carsHtml += `
+              <div class="car-card ${isPending ? 'has-pending' : ''}" id="carcard-${c.id}"
+                   ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event, '${c.id}')"
+                   ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${c.id}')">
+                <div class="cc-top">
+                  <div>
+                    <div class="cc-plate">🚚 ${c.plate}</div>
+                    <div class="cc-meta">${c.driver || 'ไม่ระบุคนขับ'} • ${c.phone || '-'}</div>
+                  </div>
+                  <span class="badge" style="background:#dcfce7; color:#166534; white-space:nowrap;">${c.type} • พร้อมรับงาน</span>
+                </div>
+                ${isPending && job ? `
+                  <div class="attached-chip" draggable="true" ondragstart="handleDragStart(event, '${job.id}')" ondragend="handleDragEnd(event)">
+                    <div class="ac-info">
+                      <b>🔗 ${job.id}</b>
+                      <small>${soldTos || 'ลูกค้าไม่ระบุ'} • ${job.weight ? Number(job.weight).toFixed(2) : '0.000'} ตัน</small>
+                    </div>
+                    <button type="button" onclick="unstageJob('${job.id}')">✖ ยกเลิก</button>
+                  </div>
+                ` : `<div class="cc-meta" style="margin-top:8px; color:#94a3b8;">พร้อมรับงาน — ลากงานมาวางที่นี่</div>`}
+              </div>
+            `;
+          });
+        }
+      });
+      availCars.innerHTML = carsHtml;
+    }
+  }
+
+  const lRows = document.getElementById("logisticsRows");
+  const jobsCountEl = document.getElementById("jobsCount");
+  if(lRows) {
+    // งานที่ถูกลากไปจับคู่ค้างไว้แล้ว (pendingMatches) จะไม่แสดงในรายการนี้อีก แต่ไปแสดงติดกับการ์ดรถแทน
+    const unmatchedJobs = accessibleJobs.filter(j => j.status === "รอจัดรถ" && !pendingMatches[j.id] && (logisticsFleetFilter === "ALL" || j.fleet === logisticsFleetFilter));
+    if(jobsCountEl) jobsCountEl.textContent = unmatchedJobs.length;
+
+    if(unmatchedJobs.length === 0) {
+      lRows.innerHTML = `
+        <div class="job-return-zone" ondragover="handleDragOver(event)" ondragenter="handleReturnDragEnter(event)" ondragleave="handleReturnDragLeave(event)" ondrop="handleReturnDrop(event)">
+          ↩️ ลากงานจากรถกลับมาที่นี่ เพื่อยกเลิกการจับคู่ (ยังไม่บันทึก)
+        </div>
+        <div class="lg-empty">🎉 ไม่มีงานค้างรอจัดรถใน Fleet นี้</div>`;
+    } else {
+      let logisticsHtml = "";
+      truckCategories.forEach(truckType => {
+        const jobsOfType = unmatchedJobs.filter(j => j.truck === truckType);
+        if(jobsOfType.length > 0) {
+          logisticsHtml += `<div class="lg-group-label">📌 ประเภทรถที่ขอ: ${truckType}</div>`;
+
+          jobsOfType.forEach(j => {
+            const soldTos = (j.destinations || []).map(d => d.soldTo).filter(Boolean).join(', ');
+            const remarks = (j.destinations || []).map(d => d.remark).filter(Boolean).join('; ');
+
+            const availableCarsList = accessibleCars.filter(c => {
+              if (c.fleet !== j.fleet || c.status !== "ว่าง" || c.type !== j.truck) return false;
+              return !Object.keys(pendingMatches).find(k => pendingMatches[k] === c.id);
+            });
+
+            logisticsHtml += `
+              <div class="job-card" id="jobcard-${j.id}" draggable="true" ondragstart="handleDragStart(event, '${j.id}')" ondragend="handleDragEnd(event)">
+                <div class="jc-top">
+                  <div class="jc-id"><span class="jc-grip">⠿⠿</span> ${j.id}</div>
+                  <span class="badge" style="background:#e0e7ff; color:#1d4ed8;">ขอ: ${j.truck || '-'}</span>
+                </div>
+                <div class="jc-meta">
+                  👤 ${soldTos || 'ไม่ระบุลูกค้า'}<br>
+                  ⚖️ ${j.weight ? Number(j.weight).toFixed(2) : '0.000'} ตัน &nbsp;•&nbsp; 📅 ${formatDateThai(j.date) || '-'}
+                  ${remarks ? `<br>📝 ${remarks}` : ''}
+                </div>
+                <select onchange="stageMatchJob('${j.id}', this.value)" style="width:100%;" ${availableCarsList.length === 0 ? 'disabled' : ''}>
+                  <option value="">${availableCarsList.length === 0 ? '-- ไม่มีรถว่างที่ตรงประเภท --' : '-- หรือเลือกจัดรถจาก Dropdown --'}</option>
+                  ${availableCarsList.map(c => `<option value="${c.id}">${c.plate} (${c.driver || '-'})</option>`).join('')}
+                </select>
+              </div>
+            `;
+          });
+        }
+      });
+      lRows.innerHTML = `
+        <div class="job-return-zone" ondragover="handleDragOver(event)" ondragenter="handleReturnDragEnter(event)" ondragleave="handleReturnDragLeave(event)" ondrop="handleReturnDrop(event)">
+          ↩️ ลากงานจากรถกลับมาที่นี่ เพื่อยกเลิกการจับคู่ (ยังไม่บันทึก)
+        </div>
+        ${logisticsHtml}`;
+    }
+  }
+
+  renderPendingActionsBar();
+
+  const dispatchFleetFilter = forcedFleet || (document.getElementById("dispatchFleetFilter") ? document.getElementById("dispatchFleetFilter").value : "ALL");
+  const activeMatchedRows = document.getElementById("activeMatchedRows");
+  if(activeMatchedRows) {
+    const matchedJobs = accessibleJobs.filter(j => (j.status === "จัดรถแล้ว" || j.status === "พิมพ์ใบงานแล้ว" || j.status === "อยู่ระหว่างขนส่ง") && (dispatchFleetFilter === "ALL" || j.fleet === dispatchFleetFilter));
+    const toolbar=document.getElementById('dispatchBulkToolbar'); if(toolbar) toolbar.style.display=matchedJobs.length?'flex':'none';
+    if(!matchedJobs.length) activeMatchedRows.innerHTML=`<tr><td colspan="10" class="empty">ยังไม่มีงานที่อยู่ระหว่างการจัดส่งในระบบ</td></tr>`;
+    else {
+      activeMatchedRows.innerHTML=matchedJobs.map(j=>{
+        const soldTos=(j.destinations||[]).map(d=>d.soldTo).filter(Boolean).join(', '); const car=db.cars.find(c=>c.id===j.carId); const plate=car?car.plate:'-'; const driver=car?(car.driver||'-'):'-';
+        const details=(j.destinations||[]).map(d=>`📍 ${d.shipTo||'ไม่ระบุปลายทาง'} (${d.weight||0} ตัน, ${d.pallet||0} Pallet)`).join('<br>'); const badge=j.status==='จัดรถแล้ว'?'matched':j.status==='พิมพ์ใบงานแล้ว'?'printed':'transit';
+        return `<tr><td style="text-align:center;"><input type="checkbox" class="dispatch-job-select" value="${j.id}" onchange="updateDispatchSelectionUI()"></td><td><b>${j.id}</b></td><td>${formatDateThai(j.date)||'-'}</td><td>${j.jobType||'-'}</td><td>${soldTos||'-'}</td><td><b>${plate}</b></td><td>${driver}</td><td style="font-size:12px;line-height:1.4;">${details}</td><td><span class="badge ${badge}">${j.status}</span></td><td class="row-actions"><button class="light smallbtn" onclick="printJob('${j.id}')">🖨️ พิมพ์ใบงาน</button>${j.status==='พิมพ์ใบงานแล้ว'?`<button class="warning smallbtn" onclick="startTransitJob('${j.id}')">🚚 อยู่ระหว่างขนส่ง</button>`:''}${j.status==='อยู่ระหว่างขนส่ง'?`<button class="success smallbtn" onclick="completeJob('${j.id}')">✅ จัดส่งเสร็จสมบูรณ์</button>`:''}${j.status!=='อยู่ระหว่างขนส่ง'?`<button class="danger smallbtn" onclick="revertJobStatus('${j.id}')">ปลด Match</button>`:''}</td></tr>`;
+      }).join(''); updateDispatchSelectionUI();
+    }
+  }
+
+  const completedJobsRows = document.getElementById("completedJobsRows");
+  if(completedJobsRows) {
+    const completedJobs = accessibleJobs.filter(j => j.status === "จัดส่งเสร็จสมบูรณ์" && (dispatchFleetFilter === "ALL" || j.fleet === dispatchFleetFilter));
+    if(completedJobs.length === 0) {
+      completedJobsRows.innerHTML = `<tr><td colspan="8" class="empty">ยังไม่มีประวัติงานที่จบการส่ง</td></tr>`;
+    } else {
+      completedJobsRows.innerHTML = completedJobs.map(j => {
+        const soldTos = (j.destinations || []).map(d => d.soldTo).filter(Boolean).join(', ');
+        const matchedCar = db.cars.find(c => c.id === j.carId);
+        const carInfo = matchedCar ? `${matchedCar.plate} (${matchedCar.type})` : '-';
+        const driverInfo = matchedCar ? matchedCar.driver || '-' : '-';
+
+        return `
+          <tr>
+            <td><b>${j.id}</b></td>
+            <td>${formatDateThai(j.date) || '-'}</td>
+            <td>${j.fleet}</td>
+            <td>${soldTos || '-'}</td>
+            <td>${carInfo}</td>
+            <td>${driverInfo}</td>
+            <td><span class="badge completed">จัดส่งเสร็จสมบูรณ์</span></td>
+            <td class="row-actions">
+              <button class="danger smallbtn" onclick="deleteJob('${j.id}')">🗑️ ลบทิ้ง</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+
+  const cRows = document.getElementById("carsRows");
+  if(cRows) {
+    const carsFleetFilter = forcedFleet || (document.getElementById("carsFleetFilter") ? document.getElementById("carsFleetFilter").value : "ALL");
+    const filteredCarsForStatus = accessibleCars.filter(c => carsFleetFilter === "ALL" || c.fleet === carsFleetFilter);
+    cRows.innerHTML = filteredCarsForStatus.map(c => `
+      <tr>
+        <td>${c.fleet}</td>
+        <td><b>${c.plate}</b></td>
+        <td>${c.type}</td>
+        <td>${c.driver || '-'}</td>
+        <td>${c.phone || '-'}</td>
+        <td><span class="badge ${c.status==='ว่าง'?'matched':'wait'}">${displayCarStatus(c.status)}</span></td>
+        <td class="row-actions">
+          <button class="warning smallbtn" onclick="openEditCarModal('${c.id}')">แก้ไข</button>
+          <button class="danger smallbtn" onclick="deleteCar('${c.id}')">ลบ</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  const selectedFleet = forcedFleet || (document.getElementById("globalFleetFilter") ? document.getElementById("globalFleetFilter").value : "ALL");
+  const startDate = document.getElementById("startDateFilter") ? document.getElementById("startDateFilter").value : "";
+  const endDate = document.getElementById("endDateFilter") ? document.getElementById("endDateFilter").value : "";
+
+  let filteredJobs = accessibleJobs.filter(j => {
+    let matchFleet = selectedFleet === "ALL" || j.fleet === selectedFleet;
+    let matchStart = !startDate || (j.date && j.date >= startDate);
+    let matchEnd = !endDate || (j.date && j.date <= endDate);
+    return matchFleet && matchStart && matchEnd;
+  });
+
+  const total = filteredJobs.length;
+  const matched = filteredJobs.filter(x => x.status !== "รอจัดรถ").length;
+  const pending = total - matched;
+  const totalW = filteredJobs.reduce((a, b) => a + Number(b.weight || 0), 0);
+  const totalP = filteredJobs.reduce((a, b) => a + Number(b.pallet || 0), 0);
+  const rate = total > 0 ? Math.round((matched / total) * 100) : 0;
+
+  document.getElementById("dkTotal").textContent = total;
+  document.getElementById("dkMatched").textContent = matched;
+  document.getElementById("dkWait").textContent = pending;
+  document.getElementById("dkWeight").textContent = totalW.toFixed(2);
+  document.getElementById("dkPallet").textContent = totalP;
+  document.getElementById("dkRate").textContent = rate + "%";
+  document.getElementById("dkRateBar").style.width = rate + "%";
+
+  const selectedDateText = (startDate || endDate) ? `${formatDateThai(startDate) || 'แรกเริ่ม'} ถึง ${formatDateThai(endDate) || 'ปัจจุบัน'}` : 'ทั้งหมด';
+  if(document.getElementById("dashSelectedDateText")) document.getElementById("dashSelectedDateText").textContent = selectedDateText;
+
+  runWhenIdle(() => renderDashboardCharts(filteredJobs, truckCategories));
+
+  const fleetList = forcedFleet ? [forcedFleet] : ["CHAIYASIT ชัยสิทธิ์ (non SCG)", "STP สยามทบพัน (non SCG)"];
+  const dashFleetRows = document.getElementById("dashFleetRows");
+  if(dashFleetRows) {
+    dashFleetRows.innerHTML = fleetList.map(f => {
+      const fJobs = filteredJobs.filter(j => j.fleet === f);
+      const fTotal = fJobs.length;
+      const fMatched = fJobs.filter(j => j.status !== "รอจัดรถ").length;
+      const fPending = fTotal - fMatched;
+      const fWeight = fJobs.reduce((a, b) => a + Number(b.weight || 0), 0);
+      const fRate = fTotal > 0 ? Math.round((fMatched / fTotal) * 100) : 0;
+      return `
+        <tr>
+          <td><b>${f}</b></td>
+          <td>${fTotal}</td>
+          <td><span style="color:var(--green);font-weight:bold;">${fMatched}</span></td>
+          <td><span style="color:var(--orange);font-weight:bold;">${fPending}</span></td>
+          <td>${fWeight.toFixed(2)}</td>
+          <td><b>${fRate}%</b></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  const dashTruckRows = document.getElementById("dashTruckRows");
+  if(dashTruckRows) {
+    dashTruckRows.innerHTML = truckCategories.map(t => {
+      const tJobs = filteredJobs.filter(j => j.truck === t);
+      const tTotal = tJobs.length;
+      const tMatched = tJobs.filter(j => j.status !== "รอจัดรถ").length;
+      const tWeight = tJobs.reduce((a, b) => a + Number(b.weight || 0), 0);
+      const tPercent = total > 0 ? Math.round((tTotal / total) * 100) : 0;
+      return `
+        <tr>
+          <td><b>${t}</b></td>
+          <td>${tTotal}</td>
+          <td>${tMatched}</td>
+          <td>${tWeight.toFixed(2)}</td>
+          <td>${tPercent}%</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  const dashJobsRows = document.getElementById("dashJobsRows");
+  if(dashJobsRows) {
+    dashJobsRows.innerHTML = filteredJobs.map(j => {
+      const soldTos = (j.destinations || []).map(d => d.soldTo).filter(Boolean).join(', ');
+      const shipTos = (j.destinations || []).map(d => d.shipTo).filter(Boolean).join(', ');
+      const matchedCar = db.cars.find(c => c.id === j.carId);
+      const carInfo = matchedCar ? `${matchedCar.plate} (${matchedCar.type})` : '-';
+      const driverInfo = matchedCar ? `${matchedCar.driver || '-'} (${matchedCar.phone || '-'})` : '-';
+      const statusBadge = j.status==='รอจัดรถ'?'wait':j.status==='จัดรถแล้ว'?'matched':j.status==='พิมพ์ใบงานแล้ว'?'printed':j.status==='อยู่ระหว่างขนส่ง'?'transit':'completed';
+
+      return `
+        <tr>
+          <td><b>${j.id}</b></td>
+          <td>${formatDateThai(j.date) || '-'}</td>
+          <td>${j.fleet}</td>
+          <td>${soldTos || '-'}</td>
+          <td>${shipTos || '-'}</td>
+          <td>${j.truck || '-'}</td>
+          <td>${driverInfo}</td>
+          <td><span class="badge ${statusBadge}">${j.status}</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
+}
+
+function renderDashboardCharts(filteredJobs, truckCategories) {
+  if (!window.Chart) return;
+  const matchedCount = filteredJobs.filter(x => x.status !== "รอจัดรถ").length;
+  const pendingCount = filteredJobs.length - matchedCount;
+
+  const statusValues = [matchedCount, pendingCount];
+  const statusTotal = statusValues.reduce((a,b) => a + b, 0);
+
+  const statusLabelPlugin = {
+    id: 'dailyStatusDoughnutLabels',
+    afterDatasetsDraw(chart) {
+      const {ctx} = chart;
+      chart.getDatasetMeta(0).data.forEach((arc, i) => {
+        const value = Number(statusValues[i] || 0);
+        if (!value) return;
+        const pct = statusTotal ? Math.round(value / statusTotal * 100) : 0;
+        const p = arc.getCenterPoint();
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.font = '800 12px Segoe UI,sans-serif';
+        ctx.fillText(`${value} งาน`, p.x, p.y - 7);
+        ctx.fillText(`${pct}%`, p.x, p.y + 9);
+        ctx.restore();
+      });
+    }
+  };
+
+  const statusCtx = document.getElementById('statusChart').getContext('2d');
+  if (statusChartInstance) statusChartInstance.destroy();
+  statusChartInstance = new Chart(statusCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['จัดรถสำเร็จแล้ว', 'รอจัดรถ'],
+      datasets: [{
+        data: statusValues,
+        backgroundColor: ['#16a34a', '#f97316'],
+        borderColor: '#fff',
+        borderWidth: 4,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      animation: { duration: 700, easing: 'easeOutQuart' },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, usePointStyle: true,
+            font: { size: 11, weight: '600' }, padding: 14 }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const value = Number(ctx.raw || 0);
+              const pct = statusTotal ? Math.round(value / statusTotal * 100) : 0;
+              return ` ${ctx.label}: ${value} งาน (${pct}%)`;
+            }
+          }
+        }
+      }
+    },
+    plugins: [statusLabelPlugin]
+  });
+
+  const truckPending = truckCategories.map(t =>
+    filteredJobs.filter(j => j.truck === t && j.status === 'รอจัดรถ').length
+  );
+  const truckMatched = truckCategories.map(t =>
+    filteredJobs.filter(j => j.truck === t &&
+      (j.status === 'จัดรถแล้ว' || j.status === 'พิมพ์ใบงานแล้ว' || j.status === 'อยู่ระหว่างขนส่ง' || j.status === 'จัดส่งเสร็จสมบูรณ์')
+    ).length
+  );
+  const truckTotals = truckCategories.map((t,i) => truckPending[i] + truckMatched[i]);
+  const truckActualPct = truckTotals.map((total,i) => total ? Math.round((truckMatched[i] / total) * 100) : 0);
+  const truckPendingPct = truckTotals.map((total,i) => total ? 100 - truckActualPct[i] : 0);
+
+  const labelPlugin = {
+    id:'dailyTruckStackedLabels',
+    afterDatasetsDraw(chart){
+      const {ctx}=chart;
+      chart.data.datasets.forEach((dataset,di)=>{
+        chart.getDatasetMeta(di).data.forEach((bar,i)=>{
+          const value=Number(dataset.data[i]||0);
+          if(!bar || value<=0 || truckTotals[i]===0)return;
+          const p=bar.getProps(['x','y','base'],true);
+          const centerY=(p.y+p.base)/2;
+          ctx.save();
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.font='800 11px Segoe UI,sans-serif';
+          ctx.fillStyle='#fff';
+          ctx.fillText(`${value}%`,p.x,centerY);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
+  const truckCtx=document.getElementById('truckChart').getContext('2d');
+  if(truckChartInstance)truckChartInstance.destroy();
+  truckChartInstance=new Chart(truckCtx,{
+    type:'bar',
+    data:{
+      labels:truckCategories,
+      datasets:[
+        {label:'งานที่จัดรถ (Actual)',data:truckActualPct,backgroundColor:'#16a34a',borderRadius:8,borderSkipped:false},
+        {label:'งานที่รอจัดรถ (Pending)',data:truckPendingPct,backgroundColor:'#f97316',borderRadius:8,borderSkipped:false}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      animation:{duration:700,easing:'easeOutQuart'},
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{font:{size:11,weight:'600'}}},
+        y:{stacked:true,beginAtZero:true,max:100,ticks:{callback:v=>v+'%',stepSize:20,font:{size:10}},grid:{color:'rgba(148,163,184,.18)'}}
+      },
+      plugins:{
+        legend:{position:'bottom',labels:{boxWidth:14,usePointStyle:true,font:{size:11,weight:'600'},padding:14}},
+        tooltip:{callbacks:{label:(ctx)=>{
+          const i=ctx.dataIndex;
+          const count=ctx.datasetIndex===0 ? truckMatched[i] : truckPending[i];
+          return ` ${ctx.dataset.label}: ${ctx.raw}% (${count} งาน)`;
+        }}}
+      }
+    },
+    plugins:[labelPlugin]
+  });
+}
+
+// อัปเดตตัวเลขสรุปด้านล่าง Pie Chart พร้อมเอฟเฟกต์ pulse สั้นๆ เมื่อค่าเปลี่ยน เพื่อให้รู้สึกว่าตัวเลข "ขยับ" ตามตัวกรองแบบเดียวกับ Pie Chart
+function setStatValue(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const changed = el.textContent !== String(value);
+  el.textContent = value;
+  if (changed) {
+    el.classList.remove("pulse");
+    requestAnimationFrame(() => el.classList.add("pulse"));
+  }
+}
+
+function renderWarehousePieChart(filteredJobs) {
+  if (!window.Chart) return;
+  const waitCount=filteredJobs.filter(x=>x.status==="รอจัดรถ").length;
+  const matchedCount=filteredJobs.filter(x=>x.status==="จัดรถแล้ว"||x.status==="พิมพ์ใบงานแล้ว"||x.status==="อยู่ระหว่างขนส่ง"||x.status==="จัดส่งเสร็จสมบูรณ์").length;
+  const total=waitCount+matchedCount;
+  const ctx=document.getElementById('warehouseStatusPieChart');
+  if(!ctx)return;
+
+  const values=[waitCount,matchedCount];
+  const labelPlugin={
+    id:'warehouseDoughnutLabels',
+    afterDatasetsDraw(chart){
+      const {ctx}=chart;
+      chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+        const v=Number(values[i]||0); if(!v)return;
+        const pct=total?Math.round(v/total*100):0;
+        const p=arc.getCenterPoint();
+        ctx.save();
+        ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';
+        ctx.font='800 12px Segoe UI,sans-serif';
+        ctx.fillText(`${v} งาน`,p.x,p.y-7);
+        ctx.fillText(`${pct}%`,p.x,p.y+9);
+        ctx.restore();
+      });
+    }
+  };
+
+  if(warehousePieChartInstance)warehousePieChartInstance.destroy();
+  warehousePieChartInstance=new Chart(ctx.getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:['งานที่รอจัดรถ','งานที่จัดรถแล้ว'],
+      datasets:[{data:values,backgroundColor:['#f97316','#16a34a'],borderColor:'#fff',borderWidth:4,hoverOffset:8}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{
+        legend:{position:'bottom',labels:{boxWidth:12,usePointStyle:true,font:{size:11,weight:'600'},padding:14}},
+        tooltip:{callbacks:{label:(c)=>{
+          const v=Number(c.raw||0),p=total?Math.round(v/total*100):0;
+          return ` ${c.label}: ${v} งาน (${p}%)`;
+        }}}
+      }
+    },
+    plugins:[labelPlugin]
+  });
+}
+
+function toggleStatusHistory(jobId) {
+  const list = document.getElementById(`status-history-${jobId}`);
+  const btn = document.getElementById(`status-toggle-${jobId}`);
+  if (!list) return;
+  const isOpen = list.classList.toggle('open');
+  if (btn) btn.classList.toggle('open', isOpen);
+}
+
+function handleDragStart(e, jobId) {
+  draggedJobId = jobId;
+  e.currentTarget.classList.add("dragging");
+}
+
+function handleDragEnd(e) {
+  e.currentTarget.classList.remove("dragging");
+  document.querySelectorAll(".drag-over, .drop-disabled").forEach(el => {
+    el.classList.remove("drag-over", "drop-disabled");
+  });
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+}
+
+function handleDragEnter(e, carId) {
+  e.preventDefault();
+  const car = db.cars.find(c => c.id === carId);
+  const job = db.jobs.find(j => j.id === draggedJobId);
+  const cardEl = e.currentTarget;
+
+  // อนุญาตให้ลากทับรถที่มีงานอื่นจับคู่ค้างอยู่ได้ (จะสลับงานให้อัตโนมัติ) — เงื่อนไขที่ยังบล็อกจริงๆ คือ Fleet/ประเภทรถ/สถานะรถเท่านั้น
+  if (car && job && car.fleet === job.fleet && car.type === job.truck && car.status === "ว่าง") {
+    cardEl.classList.add("drag-over");
+  } else {
+    cardEl.classList.add("drop-disabled");
+  }
+}
+
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove("drag-over", "drop-disabled");
+}
+
+function handleDrop(e, carId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove("drag-over", "drop-disabled");
+  if (draggedJobId && carId) {
+    const car = db.cars.find(c => c.id === carId);
+    const job = db.jobs.find(j => j.id === draggedJobId);
+    if (car && job) {
+      if (car.status !== "ว่าง") {
+        customAlert(`ไม่สามารถลากจับคู่ได้ เนื่องจากรถคันนี้มีสถานะ "${car.status}" แล้ว`, 'danger');
+        return;
+      }
+      if (car.fleet !== job.fleet || car.type !== job.truck) {
+        customAlert(`ไม่สามารถลากจับคู่ได้ เนื่องจากข้อมูล Fleet หรือประเภทรถไม่ตรงกัน`, 'danger');
+        return;
+      }
+      // ถ้ารถคันนี้มีงานอื่นค้างอยู่ stageMatchJob จะปลดงานเดิมออกให้อัตโนมัติแล้วจับคู่งานใหม่แทน
+    }
+    stageMatchJob(draggedJobId, carId);
+  }
+}
+
+function exportDailyReport() {
+  if (!window.XLSX) return customAlert("กำลังโหลดระบบ Export กรุณาลองใหม่อีกครั้ง");
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser"));
+  const forcedFleet = currentUser && currentUser.fleetFilter ? currentUser.fleetFilter : null;
+  const fleet = forcedFleet || (document.getElementById("globalFleetFilter")?.value || "ALL");
+  const start = document.getElementById("startDateFilter")?.value || "";
+  const end = document.getElementById("endDateFilter")?.value || "";
+
+  const jobs = (db.jobs || []).filter(j => {
+    if (forcedFleet && j.fleet !== forcedFleet) return false;
+    if (fleet !== "ALL" && j.fleet !== fleet) return false;
+    const due = j.dueDate || "";
+    if (start && due < start) return false;
+    if (end && due > end) return false;
+    return true;
+  });
+
+  if (!jobs.length) return customAlert("ไม่มีข้อมูลสำหรับ Export ตามตัวกรองที่เลือก");
+
+  const rows = jobs.map(j => {
+    const car = j.carId ? (db.cars || []).find(c => c.id === j.carId) : null;
+    return {
+      "เลขงาน": j.jobNo || j.id || "",
+      "วันที่ส่ง": j.dueDate || "",
+      "Fleet": j.fleet || "",
+      "ลูกค้า": j.customer || j.customerName || j.destinations?.[0]?.customer || "",
+      "Ship to": j.shipTo || j.shipto || j.destinations?.[0]?.shipTo || j.destinations?.[0]?.shipto || "",
+      "ประเภทรถ": j.truck || j.requiredTruck || "",
+      "คนขับ": j.driver || car?.driver || "",
+      "เบอร์โทร": j.phone || car?.phone || "",
+      "สถานะ": j.status || "",
+      "น้ำหนักรวม (ตัน)": Number(j.totalWeight ?? j.weight ?? 0),
+      "Pallet รวม": Number(j.totalPallet ?? j.pallet ?? 0)
+    };
+  });
+
+  try {
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [
+      {wch:16},{wch:14},{wch:28},{wch:28},{wch:28},
+      {wch:16},{wch:22},{wch:16},{wch:24},{wch:18},{wch:14}
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Daily Report");
+    const suffix = start || end ? `${start || "all"}_to_${end || "all"}` : new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `Daily_Report_${suffix}.xlsx`);
+  } catch (err) {
+    console.error("Export Daily Report failed:", err);
+    customAlert("ไม่สามารถ Export Excel ได้: " + (err.message || err));
+  }
+}
+
+
+// ===== UX UPGRADE OVERRIDES =====
+function displayCarStatus(status) {
+  if (status === 'ว่าง') return 'พร้อมรับงาน';
+  if (status === 'มีงานแล้ว') return 'รับงานแล้ว';
+  return status || '-';
+}
+function showSystemLoader(show=true){
+  const el=document.getElementById('systemLoader');
+  if(el) el.classList.toggle('active',!!show);
+}
+async function refreshData(btn) {
+  const allRefreshBtns = document.querySelectorAll(".refresh-btn");
+  allRefreshBtns.forEach(b => b.classList.add("spinning"));
+  showSystemLoader(true);
+  try {
+    const [jobsSnap, carsSnap] = await Promise.all([
+      firestoreDb.collection("jobs").get(),
+      firestoreDb.collection("cars").get()
+    ]);
+    db.jobs = jobsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    db.cars = carsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    render();
+  } catch (err) {
+    console.error("Error refreshing data:", err);
+    customAlert("ไม่สามารถอัปเดตข้อมูลได้: " + err.message, 'danger');
+  } finally {
+    setTimeout(() => {
+      allRefreshBtns.forEach(b => b.classList.remove("spinning"));
+      showSystemLoader(false);
+    }, 420);
+  }
+}
+function handleDragStart(e, jobId) {
+  draggedJobId = jobId;
+  if (e.dataTransfer) { e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',jobId); }
+  e.currentTarget.classList.add("dragging");
+}
+function handleDragEnd(e) {
+  e.currentTarget.classList.remove("dragging");
+  document.querySelectorAll(".drag-over, .drop-disabled").forEach(el => el.classList.remove("drag-over","drop-disabled"));
+}
+function handleDragEnter(e, carId) {
+  e.preventDefault();
+  const car=db.cars.find(c=>c.id===carId), job=db.jobs.find(j=>j.id===draggedJobId), card=e.currentTarget;
+  card.classList.remove('drag-over','drop-disabled');
+  if(car && job && car.fleet===job.fleet && car.type===job.truck && car.status==='ว่าง'){
+    card.dataset.dropLabel='✓ ประเภทรถตรงกัน • ปล่อยเพื่อจับคู่';
+    card.classList.add('drag-over');
+  } else {
+    card.dataset.dropLabel=car && job && car.fleet!==job.fleet ? '✕ Fleet ไม่ตรงกัน' : '✕ ประเภทรถไม่ตรงกัน';
+    card.classList.add('drop-disabled');
+  }
+}
+function handleDragLeave(e){
+  // dragleave จะถูกเรียกแม้เมาส์เลื่อนผ่าน element ลูกภายในการ์ด
+  // จึงตรวจสอบก่อนว่าออกจาก car-card จริง ๆ เพื่อไม่ให้สีเขียว/แดงหายหรือกระพริบ
+  const card = e.currentTarget;
+  const nextTarget = e.relatedTarget;
+  if (nextTarget && card.contains(nextTarget)) return;
+  card.classList.remove("drag-over","drop-disabled");
+  delete card.dataset.dropLabel;
+}
+function handleReturnDragEnter(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function handleReturnDragLeave(e){e.currentTarget.classList.remove('drag-over');}
+function handleReturnDrop(e){
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  if(draggedJobId && pendingMatches[draggedJobId]) { unstageJob(draggedJobId); }
+  draggedJobId=null;
+}
+function renderDispatchFleetDashboard(){
+  const host=document.getElementById('dispatchFleetDashboard');
+  if(!host)return;
+
+  const currentUser=JSON.parse(sessionStorage.getItem("currentUser"));
+  const forcedFleet=currentUser&&currentUser.fleetFilter?currentUser.fleetFilter:null;
+  const fleet=forcedFleet||(document.getElementById('dispatchFleetFilter')?.value||'ALL');
+  const types=['4W','4W Jumbo','6W','6W พ่วง','10W'];
+  const cars=(db.cars||[]).filter(c=>(!forcedFleet||c.fleet===forcedFleet)&&(fleet==='ALL'||c.fleet===fleet));
+  const jobs=(db.jobs||[]).filter(j=>(!forcedFleet||j.fleet===forcedFleet)&&(fleet==='ALL'||j.fleet===fleet));
+
+  host.innerHTML=types.map(t=>{
+    const tc=cars.filter(c=>c.type===t),tj=jobs.filter(j=>j.truck===t);
+    const ready=tc.filter(c=>c.status==='ว่าง').length,busy=tc.filter(c=>c.status==='มีงานแล้ว').length;
+    const active=tj.filter(j=>j.status==='จัดรถแล้ว'||j.status==='พิมพ์ใบงานแล้ว'||j.status==='อยู่ระหว่างขนส่ง').length;
+    return `<div class="dispatch-type-card"><b>🚛 ${t}</b><div class="dispatch-type-meta"><span>รถทั้งหมด <strong>${tc.length}</strong></span><span>จำนวนงาน <strong>${tj.length}</strong></span><span>พร้อมรับงาน <strong>${ready}</strong></span><span>รับงานแล้ว <strong>${busy}</strong></span><span style="grid-column:1/-1">กำลังจัดส่ง <strong>${active}</strong></span></div></div>`;
+  }).join('');
+
+  const chartHost=document.getElementById('dispatchFleetStatusCharts');
+  if(!chartHost)return;
+  chartHost.innerHTML=types.map(t=>{
+    const id='dispatchStatus_'+t.replace(/[^a-zA-Z0-9]/g,'_');
+    return `<div class="dispatch-status-chart-card"><div class="dispatch-status-chart-title">🚚 ${t}</div><div class="dispatch-status-chart-canvas"><canvas id="${id}"></canvas></div></div>`;
+  }).join('');
+
+  window.dispatchFleetStatusChartInstances=window.dispatchFleetStatusChartInstances||{};
+
+  types.forEach(t=>{
+    const tj=jobs.filter(j=>j.truck===t);
+    const pending=tj.filter(j=>j.status==='รอจัดรถ').length;
+    const matched=tj.filter(j=>j.status==='จัดรถแล้ว'||j.status==='พิมพ์ใบงานแล้ว'||j.status==='อยู่ระหว่างขนส่ง'||j.status==='จัดส่งเสร็จสมบูรณ์').length;
+    const values=[pending,matched];
+    const id='dispatchStatus_'+t.replace(/[^a-zA-Z0-9]/g,'_');
+    const canvas=document.getElementById(id);
+    if(!canvas)return;
+    if(window.dispatchFleetStatusChartInstances[id])window.dispatchFleetStatusChartInstances[id].destroy();
+
+    window.dispatchFleetStatusChartInstances[id]=new Chart(canvas.getContext('2d'),{
+      type:'doughnut',
+      data:{
+        labels:['งานรอจัดรถ','งานที่จัดรถแล้ว'],
+        datasets:[{
+          data:values,
+          backgroundColor:['#f97316','#16a34a'],
+          borderColor:'#ffffff',
+          borderWidth:3,
+          hoverOffset:7
+        }]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        cutout:'58%',
+        animation:{duration:420,easing:'easeOutQuart'},
+        plugins:{
+          legend:{
+            display:true,
+            position:'bottom',
+            labels:{
+              usePointStyle:true,
+              pointStyle:'circle',
+              padding:12,
+              font:{size:10,weight:'600'}
+            }
+          },
+          tooltip:{
+            callbacks:{
+              label:(c)=>{
+                const total=c.dataset.data.reduce((a,b)=>a+b,0);
+                const pct=total ? Math.round((c.raw/total)*100) : 0;
+                return ` ${c.label}: ${c.raw} งาน (${pct}%)`;
+              }
+            }
+          }
+        }
+      },
+      plugins:[{
+        id:'dispatchDonutLabels',
+        afterDatasetsDraw(chart){
+          const ctx=chart.ctx;
+          const dataset=chart.data.datasets[0];
+          const meta=chart.getDatasetMeta(0);
+          const total=dataset.data.reduce((a,b)=>a+b,0);
+
+          meta.data.forEach((arc,i)=>{
+            const value=Number(dataset.data[i]) || 0;
+            if(!value) return;
+            const pct=total ? (value/total)*100 : 0;
+            const pos=arc.tooltipPosition();
+
+            ctx.save();
+            ctx.textAlign='center';
+            ctx.textBaseline='middle';
+            ctx.fillStyle='#ffffff';
+            ctx.font='700 12px Segoe UI, Tahoma, Arial, sans-serif';
+            ctx.shadowColor='rgba(15,23,42,.28)';
+            ctx.shadowBlur=3;
+            ctx.fillText(`${value} งาน`,pos.x,pos.y-7);
+            ctx.font='700 11px Segoe UI, Tahoma, Arial, sans-serif';
+            ctx.fillText(`${Math.round(pct)}%`,pos.x,pos.y+9);
+            ctx.restore();
+          });
+        }
+      }]
+    });
+  });
+}
+
+const _renderBase = render;
+let dispatchRenderFrame = 0;
+render = function(){
+  _renderBase();
+  const dispatchPage=document.getElementById('dispatch');
+  if(dispatchPage && dispatchPage.classList.contains('active')){
+    cancelAnimationFrame(dispatchRenderFrame);
+    dispatchRenderFrame=requestAnimationFrame(renderDispatchFleetDashboard);
+  }
+};
+
+
+// ===== CHAIYASIT FLEET ACCESS CONTROL (ADDED) =====
+// ผู้ใช้ที่มี fleetFilter จะถูกจำกัดการมองเห็นและการทำรายการให้อยู่ภายใน Fleet ที่กำหนดเท่านั้น
+function getCurrentFleetRestriction() {
+  const currentUser = JSON.parse(sessionStorage.getItem("currentUser") || "null");
+  return currentUser && currentUser.fleetFilter ? currentUser.fleetFilter : null;
+}
+
+function hasFleetAccess(record) {
+  const restrictedFleet = getCurrentFleetRestriction();
+  return !restrictedFleet || (record && record.fleet === restrictedFleet);
+}
+
+function denyFleetAccess() {
+  customAlert("คุณไม่มีสิทธิ์เข้าถึงหรือแก้ไขข้อมูลของ Fleet อื่น", "danger");
+  return false;
+}
+
+function enforceFleetRestrictionUI() {
+  const forcedFleet = getCurrentFleetRestriction();
+  if (!forcedFleet) return;
+
+  [
+    "globalFleetFilter",
+    "logisticsFleetFilter",
+    "dispatchFleetFilter",
+    "carsFleetFilter",
+    "whFleetFilter",
+    "fleet",
+    "excelImportFleet",
+    "bulkFleet"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = forcedFleet;
+    el.disabled = true;
+  });
+}
+
+// ครอบฟังก์ชันที่อ้างอิงข้อมูลโดยตรง เพื่อป้องกันการเปิด/แก้ไขข้อมูลข้าม Fleet
+const __editJobFleetGuard = editJob;
+editJob = function(id) {
+  const job = db.jobs.find(j => j.id === id);
+  if (!hasFleetAccess(job)) return denyFleetAccess();
+  return __editJobFleetGuard(id);
+};
+
+const __updateJobFleetGuard = updateJob;
+updateJob = async function() {
+  const job = db.jobs.find(j => j.id === currentEditJobId);
+  if (!hasFleetAccess(job)) return denyFleetAccess();
+  return __updateJobFleetGuard();
+};
+
+const __deleteJobFleetGuard = deleteJob;
+deleteJob = async function(id) {
+  const job = db.jobs.find(j => j.id === id);
+  if (!hasFleetAccess(job)) return denyFleetAccess();
+  return __deleteJobFleetGuard(id);
+};
+
+const __stageMatchFleetGuard = stageMatchJob;
+stageMatchJob = function(jobId, carId) {
+  const job = db.jobs.find(j => j.id === jobId);
+  const car = db.cars.find(c => c.id === carId);
+  if (!hasFleetAccess(job) || !hasFleetAccess(car)) return denyFleetAccess();
+  return __stageMatchFleetGuard(jobId, carId);
+};
+
+const __openEditCarFleetGuard = openEditCarModal;
+openEditCarModal = function(id) {
+  const car = db.cars.find(c => c.id === id);
+  if (!hasFleetAccess(car)) return denyFleetAccess();
+  return __openEditCarFleetGuard(id);
+};
+
+const __deleteCarFleetGuard = deleteCar;
+deleteCar = async function(id) {
+  const car = db.cars.find(c => c.id === id);
+  if (!hasFleetAccess(car)) return denyFleetAccess();
+  return __deleteCarFleetGuard(id);
+};
+
+const __completeJobFleetGuard = completeJob;
+completeJob = async function(id) {
+  const job = db.jobs.find(j => j.id === id);
+  if (!hasFleetAccess(job)) return denyFleetAccess();
+  return __completeJobFleetGuard(id);
+};
+
+const __revertJobFleetGuard = revertJobStatus;
+revertJobStatus = async function(id) {
+  const job = db.jobs.find(j => j.id === id);
+  if (!hasFleetAccess(job)) return denyFleetAccess();
+  return __revertJobFleetGuard(id);
+};
+
+const __printJobFleetGuard = printJob;
+printJob = async function(id) {
+  const job = db.jobs.find(j => j.id === id);
+  if (!hasFleetAccess(job)) return denyFleetAccess();
+  return __printJobFleetGuard(id);
+};
+
+// ทำให้ Refresh และ Render คืนค่า Fleet ที่ถูกบังคับทุกครั้ง
+const __renderWithFleetRestriction = render;
+render = function() {
+  enforceFleetRestrictionUI();
+  return __renderWithFleetRestriction();
+};
+
+const __checkAuthWithFleetRestriction = checkAuth;
+checkAuth = function() {
+  const result = __checkAuthWithFleetRestriction();
+  enforceFleetRestrictionUI();
+  return result;
+};
+
+fetchInitialData();
+loadSavedCredentials();
+checkAuth();
+setupInactivityTimer();
+</script>
+</body>
+</html>
